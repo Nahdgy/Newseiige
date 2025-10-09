@@ -30,26 +30,35 @@ function header_personnalise_shortcode() {
 				fermerDrawerFn();
 			});
 		}
-		// MENU BURGER MOBILE
+		// MENU BURGER MOBILE - DRAWER À GAUCHE
 		const burgerDown = document.getElementById('burger-down');
-		const burgerClose = document.getElementById('burger-close');
-		const headerMenu = document.getElementById('header-menu');
-		// Ouvre le menu burger
-		if (burgerDown && headerMenu && burgerClose) {
-			burgerDown.addEventListener('click', function() {
-				burgerClose.classList.remove('hide');
-				burgerDown.classList.add('hide');
-				headerMenu.style.display = 'block';
-			});
+		const drawerMenu = document.getElementById('drawer-menu');
+		const fermerDrawerMenu = document.getElementById('fermer-drawer-menu');
+		const drawerMenuOverlay = document.getElementById('drawer-menu-overlay');
+		
+		function ouvrirDrawerMenu() {
+			drawerMenu.classList.add('ouvert');
+			drawerMenuOverlay.classList.add('ouvert');
 		}
-		// Ferme le menu burger
-		if (burgerClose && headerMenu && burgerDown) {
-			burgerClose.addEventListener('click', function() {
-				burgerDown.classList.remove('hide');
-				burgerClose.classList.add('hide');
-				headerMenu.style.display = 'none';
-				const flags = document.getElementById('flags');
-				if (flags) flags.style.zIndex = '1';
+		
+		function fermerDrawerMenuFn() {
+			drawerMenu.classList.remove('ouvert');
+			drawerMenuOverlay.classList.remove('ouvert');
+		}
+		
+		// Ouvre le drawer menu au clic sur le burger
+		if (burgerDown && drawerMenu && fermerDrawerMenu && drawerMenuOverlay) {
+			burgerDown.addEventListener('click', function(e) {
+				e.preventDefault();
+				ouvrirDrawerMenu();
+			});
+			
+			fermerDrawerMenu.addEventListener('click', function() {
+				fermerDrawerMenuFn();
+			});
+			
+			drawerMenuOverlay.addEventListener('click', function() {
+				fermerDrawerMenuFn();
 			});
 		}
 
@@ -255,7 +264,7 @@ function header_personnalise_shortcode() {
                     white-space: nowrap;
                     box-sizing: border-box;
                     position: relative;
-                    height: 2.5rem;
+                    height: 3.5rem;
                     display: flex;
                     align-items: center;
                     justify-content: center;
@@ -322,6 +331,11 @@ function header_personnalise_shortcode() {
   <style>
 		.elementor-element.elementor-absolute, .elementor-element.elementor-fixed {
 				z-index: 999;
+		}
+		
+		/* Assure que le header reste toujours visible */
+		.header-custom {
+			z-index: 99999 !important;
 		}
 		/* Dropdown sous-liens à droite */
 		.dropdown-sub {
@@ -393,6 +407,10 @@ function header_personnalise_shortcode() {
 		width: 100vw;
 		display:flex;
 		flex-direction:column;
+		top: 0;
+		left: 0;
+		z-index: 99999 !important;
+		background: white;
 	  }
 	  
    .header-middle {
@@ -400,10 +418,11 @@ function header_personnalise_shortcode() {
       width: 100%;
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      justify-content: space-around;
       padding: 20px 20px;
       flex-wrap: nowrap;
 	  border-bottom: 1px solid #000000;
+      gap: 20px;
     }
 	  
 	  .trp-language-switcher{
@@ -459,10 +478,10 @@ function header_personnalise_shortcode() {
 	  }
 
 	.actions-header {
-	  display: flex;
-	  align-items: center;
-	  gap: 10%; /* Renforcé pour bien espacer les icônes */
-		height:2rem;
+        display: flex;
+        align-items: center;
+        gap: 17px;
+	    height:2rem;
 	}
 	  
 	  .actions-header a{
@@ -470,12 +489,12 @@ function header_personnalise_shortcode() {
 	  align-items: flex-end;
 	}
     .cart-account_container {
-      display: flex;
-      align-items: center;
-      gap: 15px;
-      background-color: #000;
-      color: #fff;
-        padding: 6px 12px;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        background-color: #000;
+        color: #fff;
+        padding: 12px 20px;
         border-radius: 30px;
     }
 	  
@@ -560,30 +579,38 @@ function header_personnalise_shortcode() {
 	  
 	  @media screen and (min-width: 1130px) {
 		  .burger-icon{
-			  display:none;
-		}
+            display:none;
+		    }
 		  .logos-mobile{
-			  display:none;
+            display:none;
 		  }
 		  .conteneur-reduit {
-			 width: 90vw;
-			display: flex;
-			flex-direction:row;
-      		justify-content: space-between;
-      		align-items: center;
+            width: 90vw;
+            display: flex;
+            flex-direction:row;
+            justify-content: space-between;
+            align-items: center;
 		 }
 		  .menu-navbar nav{
-			  display: flex;
-    		  flex-direction: row;
-		  }
+            display: flex;
+            flex-direction: row;
+            gap: 30px;
+            
+		    }
+            .menu-navbar nav a{
+            font-size: 16px;
+            font-weight: 400;
+            color: #000 !important;
+            font-family: 'Montserrat', sans-serif;
+            }
 		  #burger-close{
-			  display:none;
-		  }
+            display:none;
+		    }
 	  }
 	  
 	  @media screen and (max-width: 1129px) {
 		  .header-menu{
-			  display:none;
+			  display:none !important;
 		}
 		  .search{
 			  display:none;
@@ -639,7 +666,7 @@ function header_personnalise_shortcode() {
     .btn-reservation {
       background-color: #000000;
       color: #fff !important;
-      padding: 6px 12px;
+      padding: 12px 20px;
       border: 1px solid #000000;
       border-radius: 30px;
       text-decoration: none;
@@ -825,6 +852,77 @@ function header_personnalise_shortcode() {
 	.cart-link:hover{
 		background-color: #FF3F22;
 	}
+	
+	/* Drawer menu burger à gauche */
+	.drawer-menu {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        width: 320px;
+        max-width: 90vw;
+        background: #fff;
+        box-shadow: 2px 0 10px rgba(0,0,0,0.2);
+        z-index: 9999;
+        transform: translateX(-100%);
+        transition: transform 0.3s cubic-bezier(.4,0,.2,1);
+        display: flex;
+        flex-direction: column;
+    }
+    .drawer-menu.ouvert {
+        transform: translateX(0);
+    }
+    
+    /* Navigation dans le drawer menu */
+    .drawer-nav {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        margin-bottom: 2rem;
+    }
+    .drawer-nav a {
+        color: #000 !important;
+        text-decoration: none;
+        padding: 1rem 0;
+        border-bottom: 1px solid #eee;
+        font-family: 'DIN Next LT Pro', sans-serif;
+        font-size: 18px;
+        font-weight: 400;
+        transition: all 0.3s ease;
+    }
+    .drawer-nav a:hover {
+        background-color: #f5f5f5;
+        color: #FF3F22 !important;
+        font-weight: 600;
+        padding-left: 10px;
+    }
+    
+    /* Actions dans le drawer menu */
+    .drawer-actions {
+        margin-top: auto;
+        padding-top: 1rem;
+        border-top: 1px solid #eee;
+    }
+    .drawer-actions .btn-reservation {
+        width: 100%;
+        text-align: center;
+        display: block;
+        margin-bottom: 1rem;
+    }
+    
+    /* Styles spécifiques pour l'intégration WordPress/Elementor */
+    .elementor-top-section {
+        z-index: 1 !important;
+    }
+    
+    .elementor-inner-section {
+        z-index: 1 !important;
+    }
+    
+    /* Assure que les popups et modaux Elementor restent au-dessus */
+    .elementor-popup-modal {
+        z-index: 999999 !important;
+    }
   </style>
 
   <div class="header-custom">
@@ -840,20 +938,33 @@ function header_personnalise_shortcode() {
 			    <img src="http://newsaiige.com/wp-content/uploads/2025/05/cropped-cropped-Logo_noir_fondtransparent-scaled-1-e1748357681317.png" alt="">
             </a>
       	</div>
+        <div class="menu-navbar">
+            <nav>
+                <a href="https://newsaiige.com/boutique/">E-shop</a>
+                <a href="https://newsaiige.com/soins/">Soins</a>
+                <a href="https://newsaiige.com/abonnement/">Abonnements</a>
+                <a href="https://newsaiige.com/tarifs/">Tarifs</a>
+                <a href="https://newsaiige.com/blog/">Blog</a>
+                <a href="https://newsaiige.com/carte-cadeau/">Carte Cadeau</a>
+            </nav>
+	    </div>
 
       	<div class="actions-header">
+            <div class="partner">
+			    <a href="https://www.planity.com/maderotherapie-newsaiige-83130-la-garde" class="btn-reservation">Reservez Votre Soin</a>
+		    </div>
 			<div class="cart-account_container">
-			    <div>
-    				<a href="https://newsaiige.com/mon-compte/">
-    				<img src="http://newsaiige.com/wp-content/uploads/2025/10/icone_mon_compte.png" alt="Compte">
-    				</a>
-    			</div>
-                <span>|</span>
             	<div style="position:relative;">
       				<a href="https://newsaiige.com/panier/" id="ouvrir-panier" style="position:relative;display:inline-block;">
         				<img src="http://newsaiige.com/wp-content/uploads/2025/10/icone_panier.png" alt="Panier" style="position:relative;">
         				<span id="panier-count" style="position:absolute;top:-7px;right:-7px;background:#FF3F22;color:#fff;border-radius:50%;min-width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;padding:0 6px;box-shadow:0 1px 4px rgba(0,0,0,0.12);z-index:2;">0</span>
       				</a>
+    			</div>
+                <span>|</span>
+                <div>
+    				<a href="https://newsaiige.com/mon-compte/">
+    				<img src="http://newsaiige.com/wp-content/uploads/2025/10/icone_mon_compte.png" alt="Compte">
+    				</a>
     			</div>
 			</div>
             <!-- Drawer vertical à droite -->
@@ -871,6 +982,29 @@ function header_personnalise_shortcode() {
                         <a href="https://newsaiige.com/panier/" class="cart-link">Voir le panier</a>
                 </div>
             </div>
+            
+            <!-- Drawer menu burger à gauche -->
+            <div id="drawer-menu-overlay" class="drawer-overlay"></div>
+                
+            <div id="drawer-menu" class="drawer-menu">
+                <div class="drawer-header">
+                    <h2>Menu</h2>
+                    <button id="fermer-drawer-menu" class="fermer-drawer">&times;</button>	
+                </div>
+                <div class="drawer-content">
+                    <nav class="drawer-nav">
+                        <a href="https://newsaiige.com/contact/">E-shop</a>
+                        <a href="https://newsaiige.com/faq/">Soins</a>
+                        <a href="https://newsaiige.com/qui-sommes-nous-2/">Abonnements</a>
+                        <a href="https://newsaiige.com/nos-news/">Tarifs</a>
+                        <a href="https://newsaiige.com/nos-news/">Blog</a>
+                        <a href="https://newsaiige.com/nos-news/">Carte Cadeau</a>
+                    </nav>
+                    <div class="drawer-actions">
+                        <a href="https://www.planity.com/maderotherapie-newsaiige-83130-la-garde" class="btn-reservation">Reservez Votre Soin</a>
+                    </div>
+                </div>
+            </div>
                 <div class="burger-icon" id="burger-down">
                     <span class="burger-slice"></span>
                     <span class="burger-slice"></span>
@@ -880,27 +1014,6 @@ function header_personnalise_shortcode() {
 		
 	</div>  
 		 
-	<div class="header-menu" id="header-menu">
-      <div class="conteneur-reduit">
-		  <div class="cross" id="burger-close" onclick="document.getElementById('burger-down').classList.remove('hide'); document.getElementById('burger-close').classList.add('hide');document.getElementById('header-menu').style.display = 'none';document.getElementById('flags').style.zIndex = '1'">
-			<strong>X</strong>
-		</div>
-		  <div class="menu-navbar">
-			<nav>
-          		<a href="https://newsaiige.com/contact/">E-shop</a>
-          		<a href="https://newsaiige.com/faq/">Soins</a>
-          		<a href="https://newsaiige.com/qui-sommes-nous-2/">Abonnements</a>
-          		<a href="https://newsaiige.com/nos-news/">Tarifs</a>
-                <a href="https://newsaiige.com/nos-news/">Blog</a>
-                <a href="https://newsaiige.com/nos-news/">Carte Cadeau</a>
-        	</nav>
-		</div>
-        <div class="partner">
-			<a href="https://www.planity.com/maderotherapie-newsaiige-83130-la-garde" class="btn-reservation">Reservez Votre Soin</a>
-		</div>
-		
-      </div>
-    </div>
    </div>
 	<?php
 	return ob_get_clean();
