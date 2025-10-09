@@ -1,0 +1,908 @@
+function header_personnalise_shortcode() {
+  ob_start();
+  ?>
+	<script>
+	document.addEventListener('DOMContentLoaded', function() {
+		var boutonPanier = document.getElementById('ouvrir-panier');
+		var drawer = document.getElementById('drawer-panier');
+		var fermerDrawer = document.getElementById('fermer-drawer');
+		var overlay = document.getElementById('drawer-overlay');
+		function ouvrirDrawer() {
+			drawer.classList.add('ouvert');
+			overlay.classList.add('ouvert');
+		}
+		function fermerDrawerFn() {
+			drawer.classList.remove('ouvert');
+			overlay.classList.remove('ouvert');
+		}
+		if(boutonPanier && drawer && fermerDrawer && overlay) {
+			boutonPanier.addEventListener('click', function(e) {
+				// Ouvre le drawer uniquement si le lien n'est pas déjà sur la page panier
+				if (window.location.pathname !== '/panier/') {
+					e.preventDefault();
+					ouvrirDrawer();
+				}
+			});
+			fermerDrawer.addEventListener('click', function() {
+				fermerDrawerFn();
+			});
+			overlay.addEventListener('click', function() {
+				fermerDrawerFn();
+			});
+		}
+		// MENU BURGER MOBILE
+		const burgerDown = document.getElementById('burger-down');
+		const burgerClose = document.getElementById('burger-close');
+		const headerMenu = document.getElementById('header-menu');
+		// Ouvre le menu burger
+		if (burgerDown && headerMenu && burgerClose) {
+			burgerDown.addEventListener('click', function() {
+				burgerClose.classList.remove('hide');
+				burgerDown.classList.add('hide');
+				headerMenu.style.display = 'block';
+			});
+		}
+		// Ferme le menu burger
+		if (burgerClose && headerMenu && burgerDown) {
+			burgerClose.addEventListener('click', function() {
+				burgerDown.classList.remove('hide');
+				burgerClose.classList.add('hide');
+				headerMenu.style.display = 'none';
+				const flags = document.getElementById('flags');
+				if (flags) flags.style.zIndex = '1';
+			});
+		}
+
+		// Gestion des sous-dropdowns Boutique au clic sur la flèche
+		let currentSubMenu = null;
+		document.querySelectorAll('.dropdown-sub').forEach(function(sub) {
+			const submenu = sub.querySelector('.dropdown-content-sub');
+			const arrow = sub.querySelector('.arrow-orange');
+			
+			if (arrow) {
+				// Gestion du clic sur la flèche
+				arrow.addEventListener('click', function(e) {
+					e.preventDefault();
+					e.stopPropagation();
+					
+					// Ferme le sous-menu actuellement ouvert s'il est différent
+					if (currentSubMenu && currentSubMenu !== submenu) {
+						currentSubMenu.style.display = 'none';
+					}
+					
+					// Toggle du sous-menu cliqué
+					if (submenu.style.display === 'grid') {
+						submenu.style.display = 'none';
+						currentSubMenu = null;
+					} else {
+						submenu.style.display = 'grid';
+						currentSubMenu = submenu;
+					}
+				});
+				
+				// Empêche la propagation du clic sur le sous-menu pour éviter sa fermeture
+				submenu.addEventListener('click', function(e) {
+					e.stopPropagation();
+				});
+			}
+		});
+		
+		// Ferme tous les sous-menus si on clique ailleurs
+		document.addEventListener('click', function() {
+			if (currentSubMenu) {
+				currentSubMenu.style.display = 'none';
+				currentSubMenu = null;
+			}
+		});		// Timeout hover menu déroulant principal BOUTIQUE
+		var dropdownBoutique = document.querySelector('.dropdown');
+		if (dropdownBoutique) {
+			var menuContent = dropdownBoutique.querySelector('.dropdown-content');
+			let timerShowParent, timerHideParent;
+			dropdownBoutique.addEventListener('mouseenter', function() {
+				clearTimeout(timerHideParent);
+				timerShowParent = setTimeout(function() {
+					menuContent && (menuContent.style.display = 'block');
+				}, 500);
+			});
+			dropdownBoutique.addEventListener('mouseleave', function() {
+				clearTimeout(timerShowParent);
+				timerHideParent = setTimeout(function() {
+					menuContent && (menuContent.style.display = 'none');
+				}, 500);
+			});
+		}
+	});
+
+	document.addEventListener('DOMContentLoaded', () => {
+		const carousel = document.getElementById('carousel');
+		const items = carousel.querySelectorAll('.carousel-item');
+		let activeIndex = 0;
+		function setActive(index) {
+			items.forEach((item, i) => {
+				item.classList.toggle('carousel-item-active', i === index);
+			});
+			// Centrage de l'élément actif
+			const item = items[index];
+			if (item) {
+				const carouselRect = carousel.getBoundingClientRect();
+				const itemRect = item.getBoundingClientRect();
+				const offset = itemRect.left - carouselRect.left - (carouselRect.width/2 - itemRect.width/2);
+				carousel.scrollBy({ left: offset, behavior: 'smooth' });
+			}
+		}
+		setActive(activeIndex);
+		document.getElementById('prevBtn')?.addEventListener('click', () => {
+			activeIndex = Math.max(0, activeIndex - 1);
+			setActive(activeIndex);
+		});
+		document.getElementById('nextBtn')?.addEventListener('click', () => {
+			activeIndex = Math.min(items.length - 1, activeIndex + 1);
+			setActive(activeIndex);
+		});
+		// Optionnel : clic sur un item pour le centrer
+		items.forEach((item, i) => {
+			item.addEventListener('click', () => {
+				activeIndex = i;
+				setActive(activeIndex);
+			});
+		});
+	});
+
+	// JS pour le compteur de quantité
+	document.addEventListener('DOMContentLoaded', function() {
+		document.querySelectorAll('.qty-btn').forEach(function(btn) {
+			btn.addEventListener('click', function() {
+				var productId = btn.getAttribute('data-product');
+				var input = document.getElementById('qty-' + productId);
+				var action = btn.getAttribute('data-action');
+				var current = parseInt(input.value) || 1;
+				if (action === 'increment') {
+					input.value = current + 1;
+				} else if (action === 'decrement' && current > 1) {
+					input.value = current - 1;
+				}
+			});
+		});
+	});
+	// Ajout AJAX au panier
+	function ajouterAuPanier(productId, qty) {
+		jQuery.ajax({
+			url: wc_add_to_cart_params.ajax_url,
+			type: 'POST',
+			data: {
+				action: 'woocommerce_add_to_cart',
+				product_id: productId,
+				quantity: qty
+			},
+			success: function(response) {
+				// Optionnel : mettre à jour le compteur ou le drawer
+				location.reload();
+			},
+			error: function() {
+				alert('Erreur lors de l’ajout au panier');
+			}
+		});
+	}
+
+	// Mise à jour AJAX de la quantité dans le panier
+	function modifierQuantitePanier(productId, qty) {
+		jQuery.ajax({
+			url: wc_add_to_cart_params.ajax_url,
+			type: 'POST',
+			data: {
+				action: 'update_cart_quantity',
+				product_id: productId,
+				quantity: qty
+			},
+			success: function(response) {
+				location.reload();
+			},
+			error: function() {
+				alert('Erreur lors de la mise à jour du panier');
+			}
+		});
+	}
+
+	function updatePanierCount() {
+		jQuery.post(wc_add_to_cart_params.ajax_url, { action: 'get_mini_panier' }, function(response) {
+			if (response && response.items) {
+			var total = 0;
+			response.items.forEach(function(item){ total += item.qty; });
+			var badge = document.getElementById('panier-count');
+			if (badge) badge.textContent = total;
+			}
+		});
+		}
+		document.addEventListener('DOMContentLoaded', function() {
+		updatePanierCount();
+		// Optionnel : rafraîchir à chaque action panier
+		document.body.addEventListener('panierUpdated', updatePanierCount);
+		});
+		// Pour déclencher la mise à jour du badge après une action AJAX sur le panier
+		window.panierUpdated = function() {
+		var event = new Event('panierUpdated');
+		document.body.dispatchEvent(event);
+		}
+
+	</script>
+	<script src="https://www.google.com/recaptcha/api.js" async defer></script>
+
+
+
+		<style>
+				:root {
+					--no-of-slides: 1;
+					--slides-in-view: 1;
+					--slide-width: 187vw;
+					--iteration-time: 60s;
+				}
+
+				/* Animation avec pause à 95%-100% */
+				@keyframes scroll {
+					0% {
+						transform: translateX(0);
+					}
+					100% {
+						transform: translateX(calc(var(--slide-width) * var(--no-of-slides) * -1)); /* même position = pause */
+					}
+				}
+
+				.banderole {
+                    width: 100%;
+                    overflow: hidden;
+                    background-color: #82897F;
+                    color: white;
+                    white-space: nowrap;
+                    box-sizing: border-box;
+                    position: relative;
+                    height: 2.5rem;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                .banderoleText {
+                    display: inline-block;
+                    padding-left: 100%;
+                    animation: scroll var(--iteration-time) linear infinite;
+                    font-family: 'Montserrat', sans-serif;
+                    font-size: 1.6rem;
+                    font-weight: 400;
+                    text-decoration: underline;
+                }
+
+				/* Correction sous-menus BOUTIQUE alignés à droite, même position */
+				.header-menu .dropdown-sub {
+						position: static;
+				}
+				.header-menu .dropdown-content-sub {
+						position: absolute;
+						left: 100%;
+						top: 0;
+						min-width: 760px;
+						max-height: 400px;
+						overflow-y: auto;
+						background: #f9f9f9;
+						box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.15);
+						padding: 10px 18px;
+						z-index: 100;
+						border-radius: 0 8px 8px 8px;
+						list-style-type: none;
+						transition: opacity 0.2s;
+						word-break: break-word;
+						white-space: normal;
+						display: none;
+				}
+				/* L'affichage est maintenant géré par JavaScript au clic */
+				.header-menu .dropdown-content-sub li {
+						margin: 6px 0;
+				}
+				.header-menu .dropdown-content-sub a {
+						color: #222 !important;
+						font-size: 15px;
+						text-decoration: none;
+						padding: 4px 8px;
+						border-radius: 4px;
+						display: block;
+						transition: background 0.2s;
+				}
+				.header-menu .dropdown-content-sub a:hover {
+						background: #ececec;
+						color: #FF3F22 !important;
+				}
+				/* Pour éviter que le sous-menu ne soit coupé */
+				.header-menu .dropdown-content {
+						overflow: visible;
+				}
+				.fil-ariane{
+					margin-top:20%;
+
+				}
+		</style>
+
+  <style>
+		.elementor-element.elementor-absolute, .elementor-element.elementor-fixed {
+				z-index: 999;
+		}
+		/* Dropdown sous-liens à droite */
+		.dropdown-sub {
+			position: relative;
+			display: flex;
+			align-items: center;
+		}
+		.dropdown-sub > a {
+			padding-right: 18px;
+			white-space: nowrap;
+		}
+			.dropdown-content-sub {
+				display: none;
+				position: absolute;
+				left: 100%;
+				top: 0;
+				width: 760px;
+				max-height: 400px;
+				overflow-y: auto;
+				background: #f9f9f9;
+				box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.15);
+				padding: 10px 18px;
+				z-index: 2;
+				border-radius: 0 8px 8px 8px;
+				list-style-type: none;
+				transition: opacity 0.2s;
+				word-break: break-word;
+				white-space: normal;
+			}
+		/* L'affichage des sous-menus est maintenant géré par JavaScript au clic */
+		/* Style de la barre de défilement pour les sous-menus */
+		.dropdown-content-sub::-webkit-scrollbar {
+			width: 8px;
+		}
+		.dropdown-content-sub::-webkit-scrollbar-track {
+			background: #f1f1f1;
+			border-radius: 4px;
+		}
+		.dropdown-content-sub::-webkit-scrollbar-thumb {
+			background: #FF3F22;
+			border-radius: 4px;
+		}
+		.dropdown-content-sub::-webkit-scrollbar-thumb:hover {
+			background: #e6381e;
+		}
+		.dropdown-content-sub li {
+			margin: 6px 0;
+		}
+		.dropdown-content-sub a {
+			color: #222 !important;
+			font-size: 15px;
+			text-decoration: none;
+			padding: 4px 8px;
+			border-radius: 4px;
+			display: block;
+			transition: background 0.2s;
+		}
+		.dropdown-content-sub a:hover {
+			background: #ececec;
+			color: #FF3F22 !important;
+		}
+		/* Pour éviter que le sous-menu ne soit coupé */
+		.dropdown-content {
+			overflow: visible;
+		}
+
+	.header-custom{
+		position: fixed;
+		width: 100vw;
+		display:flex;
+		flex-direction:column;
+	  }
+	  
+   .header-middle {
+      background: white;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 20px;
+      flex-wrap: nowrap;
+	  border-bottom: 1px solid #000000;
+    }
+	  
+	  .trp-language-switcher{
+		  width:2rem;
+		max-height:20px;
+	  }
+	  
+	  .trp-language-switcher > div > a > img {
+	   width: 25px;
+	   height: 25px;
+	   border-radius: 20px;
+	 }
+
+	  .trp-language-switcher > div {
+		  background-image: none;
+		  padding: 0px;
+	  }	
+
+	  .trp-language-switcher > div > a {
+		  padding: 0px;
+	  }
+	  
+	  trp-ls-shortcode-current-language{
+		  width: 20px;
+	  }
+
+	.search {
+	  flex: 0;
+	  /*display: flex;*/
+	  align-items: center;
+	  justify-content: flex-start;
+		height:2rem;
+	}
+	.search-mobile{
+		display: none;
+	}
+
+    .logos {
+      flex: 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+	  margin: 0 2vw;  
+	  max-width: 20vw;
+    }
+	.logos img{
+	  height: 30px;
+	 }
+	 
+	  #headshok{
+		  height: 45px;
+	  }
+
+	.actions-header {
+	  display: flex;
+	  align-items: center;
+	  gap: 10%; /* Renforcé pour bien espacer les icônes */
+		height:2rem;
+	}
+	  
+	  .actions-header a{
+	  display: flex;
+	  align-items: flex-end;
+	}
+    .cart-account_container {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      background-color: #000;
+      color: #fff;
+        padding: 6px 12px;
+        border-radius: 30px;
+    }
+	  
+	  .burger-icon{
+		  height:25px;
+		  width:40px;
+		  display:flex;
+		  flex-direction:column;
+		  justify-content: space-between;
+		  z-index:99;
+		  margin-left:.5rem;
+	  }
+	  
+	  .burger-slice{
+		  background-color:black;
+		  height:4px;
+		  border-radius:1px;
+	  }
+
+    .search-form {
+      display: flex;
+      align-items: center;
+      position: relative;
+      max-width: 20rem;
+	  min-width: 170px;
+	  width: 20vw;
+      overflow: hidden;
+      background-color: #fff;
+    }
+
+    .search-form input[type="search"] {
+      width: 100%;
+      height: 100%;
+      padding: 10px 40px 10px 20px;
+      background: url('https://newsaiige.com/wp-content/uploads/2025/06/chercher.png') no-repeat right 10px center;
+      background-size: 16px 16px;
+      border: 1px solid black;
+      border-radius: 30px;
+      box-sizing: border-box;
+    }
+
+    .search-form button {
+      display: none;
+    }
+	  .search-form input::placeholder {
+        color: black;
+        opacity: 1;
+      }
+
+    .header-menu {
+      background: transparent;
+      display: flex;
+      justify-content: center;
+      padding: 0 20px;
+    }
+
+    .conteneur-reduit {
+      background-color: white;
+      max-width: 1450px;
+      padding: 1rem;
+      border-radius: 0 0 20px 20px;
+		border: 1px solid black;
+		border-top: none;
+    }
+	  
+	  @media screen and (max-width: 530px) {
+		  .header-middle{
+			  display:grid;
+			  grid-template-columns: 2fr auto;
+		  }
+		  .actions-header{
+			  margin-top:1rem
+		  }
+		  .logos{
+			 width:100%;
+			 max-width: 100%;
+		  }
+		  .logos img {
+			  height: 45px;
+		  }
+	}
+	  
+	  @media screen and (min-width: 1130px) {
+		  .burger-icon{
+			  display:none;
+		}
+		  .logos-mobile{
+			  display:none;
+		  }
+		  .conteneur-reduit {
+			 width: 90vw;
+			display: flex;
+			flex-direction:row;
+      		justify-content: space-between;
+      		align-items: center;
+		 }
+		  .menu-navbar nav{
+			  display: flex;
+    		  flex-direction: row;
+		  }
+		  #burger-close{
+			  display:none;
+		  }
+	  }
+	  
+	  @media screen and (max-width: 1129px) {
+		  .header-menu{
+			  display:none;
+		}
+		  .search{
+			  display:none;
+		  }
+		  .search-mobile{
+			  display:flex;
+		  }
+	  	.logos-en-ligne{
+			  display:none;
+		  }
+	  .conteneur-reduit {
+			display: flex;
+			flex-direction:column;
+			align-items: center;
+		  width: 20rem;
+		}
+		  .cross{
+			  width:100%;
+			  display: flex;
+			  justify-content: flex-end;
+		  }
+	  	.menu-navbar{
+		  display: flex;
+			flex-direction:column;
+			align-items: flex-start;
+			width:100%;
+			margin-bottom:10px;
+	  	}
+		  .menu-navbar nav{
+			  display: flex;
+    		  flex-direction: column;
+		  }
+	}
+
+    .header-menu nav a {
+      margin-right: 15px;
+      text-decoration: none;
+      color: #000 !important;
+      font-family: 'DIN Next LT Pro', sans-serif;
+      font-size: 16px;
+      font-weight: 300;
+      margin:0.5rem 1rem;
+      border-radius: 5px;
+      transition: background-color 0.3s ease;
+      height: 100%;
+    }
+
+    .header-menu nav a:hover {
+      background-color: #E9E9E9;
+	  font-weight:700;
+    }
+
+    .btn-reservation {
+      background-color: #000000;
+      color: #fff !important;
+      padding: 6px 12px;
+      border: 1px solid #000000;
+      border-radius: 30px;
+      text-decoration: none;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 16px;
+      font-weight: 500;
+      min-width: 5rem;
+      transition: all 0.3s ease;
+    }
+
+    .btn-reservation:hover {
+      background-color: #ffffff;
+      color: rgb(0, 0, 0) !important;
+    }
+
+ 	.elementor-shortcode .trp-ls-shortcode-current-language, .elementor-shortcode .trp-ls-shortcode-language {
+	  border: none;
+	  z-index:1;
+	}
+	  
+	  .hide{
+		  display:none
+	  }
+	  
+	.dropdown {
+  		margin:0.5rem 0rem;
+	}
+	.dropdown a{
+		margin: 0;
+	 }
+	.dropdown-content {
+	  display: none;
+	  position: absolute;
+	  background-color: #f9f9f9;
+	  min-width: 160px;
+	  box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+	  padding: 12px 16px;
+	  z-index: 1;
+	  list-style-type: none;
+	}
+	.dropdown-content li{
+		margin-top:5px;
+	 }
+	.dropdown:hover .dropdown-content {
+	  display: block;
+	}
+    /* Overlay semi-transparent pour le drawer */
+    .drawer-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0,0,0,0.4);
+        z-index: 9998;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+    }
+    .drawer-overlay.ouvert {
+        opacity: 1;
+        pointer-events: auto;
+    }
+    /* Drawer vertical à droite */
+    .drawer-panier {
+        position: fixed;
+        top: 0;
+        right: 0;
+        height: 100vh;
+        width: 501px;
+        max-width: 90vw;
+        background: #fff;
+        box-shadow: -2px 0 10px rgba(0,0,0,0.2);
+        z-index: 9999;
+        transform: translateX(100%);
+        transition: transform 0.3s cubic-bezier(.4,0,.2,1);
+        display: flex;
+        flex-direction: column;
+    }
+    .drawer-panier.ouvert {
+        transform: translateX(0);
+    }
+    .drawer-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem;
+        border-bottom: 1px solid #eee;
+    }
+    .fermer-drawer {
+        background: none;
+        border: none;
+        font-size: 2rem;
+        cursor: pointer;
+		color: #000;
+    }
+	.fermer-drawer:hover {
+		background-color: #FF3F22;
+	}
+    .drawer-content {
+		display: flex;
+		flex-direction: column;
+		flex-wrap: nowrap;
+        padding: 1rem;
+        flex: 1;
+        overflow-y: auto;
+    }
+	/* Flèche orange à droite des titres principaux du menu BOUTIQUE */
+	.arrow-orange {
+	display: inline-block;
+	margin-left: 8px;
+	vertical-align: middle;
+	width: 100%;
+	height: 18px;
+	background: none;
+	position: relative;
+	cursor: pointer;
+	transition: transform 0.2s ease;
+	}
+	.arrow-orange:hover {
+		transform: scale(1.1);
+	}
+	.arrow-orange::after {
+	content: '';
+	display: block;
+	width: 0;
+	height: 0;
+	border-top: 9px solid transparent;
+	border-bottom: 9px solid transparent;
+	border-left: 12px solid #FF3F22;
+	position: absolute;
+	right: 0;
+	top: 0;
+	}
+	.fil-ariane {
+	margin: 1rem 0;
+	font-family: 'din-next-lt-pro', sans-serif;
+	font-size: 16px;
+	}
+	.fil-ariane ul {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	}
+	.fil-ariane li {
+	display: flex;
+	align-items: center;
+	}
+	.fil-ariane a {
+	color: #FF3F22;
+	text-decoration: none;
+	font-weight: 700;
+	transition: color 0.2s;
+	}
+	.fil-ariane a:hover {
+	color: #222;
+	text-decoration: underline;
+	}
+	.fil-ariane span {
+	margin: 0 6px;
+	color: #FF3F22;
+	font-size: 18px;
+	font-weight: bold;
+	}
+	.go-to-cart{
+		display:flex;
+		width: 100%;
+		justify-content: center;
+	}
+	.cart-link{
+		background-color: #000;
+		border-radius:10px;
+		color:#fff !important;
+		padding: 14px;
+		font-size: 24px;
+		font-weight: 600;
+		justify-content: center;
+		margin-top: 5%;
+	}
+	.cart-link:hover{
+		background-color: #FF3F22;
+	}
+  </style>
+
+  <div class="header-custom">
+		<section class="banderole">
+		  <p class="banderoleText">
+            Nouveau: Découvrez l'alliée incontournable pour une peau LISSÉE & TONIFIÉE!
+            </p>
+		</section>
+	  
+	  <div class="header-middle">
+      	<div class="logos">
+            <a href="https://newsaiige.com/">
+			    <img src="http://newsaiige.com/wp-content/uploads/2025/05/cropped-cropped-Logo_noir_fondtransparent-scaled-1-e1748357681317.png" alt="">
+            </a>
+      	</div>
+
+      	<div class="actions-header">
+			<div class="cart-account_container">
+			    <div>
+    				<a href="https://newsaiige.com/mon-compte/">
+    				<img src="http://newsaiige.com/wp-content/uploads/2025/10/icone_mon_compte.png" alt="Compte">
+    				</a>
+    			</div>
+                <span>|</span>
+            	<div style="position:relative;">
+      				<a href="https://newsaiige.com/panier/" id="ouvrir-panier" style="position:relative;display:inline-block;">
+        				<img src="http://newsaiige.com/wp-content/uploads/2025/10/icone_panier.png" alt="Panier" style="position:relative;">
+        				<span id="panier-count" style="position:absolute;top:-7px;right:-7px;background:#FF3F22;color:#fff;border-radius:50%;min-width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;padding:0 6px;box-shadow:0 1px 4px rgba(0,0,0,0.12);z-index:2;">0</span>
+      				</a>
+    			</div>
+			</div>
+            <!-- Drawer vertical à droite -->
+            <div id="drawer-overlay" class="drawer-overlay"></div>
+                
+            <div id="drawer-panier" class="drawer-panier">
+                <div class="drawer-header">
+                    <h2>Votre panier</h2>
+                    <button id="fermer-drawer" class="fermer-drawer">&times;</button>	
+                </div>
+                <div class="drawer-content">
+                    <?php echo do_shortcode('[mini_panier_text_livraison]'); ?>
+                    <?php echo do_shortcode('[mini_panier_produits]'); ?>
+                    <?php /*echo do_shortcode('[mini_panier_recommandes]');*/ ?>
+                        <a href="https://newsaiige.com/panier/" class="cart-link">Voir le panier</a>
+                </div>
+            </div>
+                <div class="burger-icon" id="burger-down">
+                    <span class="burger-slice"></span>
+                    <span class="burger-slice"></span>
+                    <span class="burger-slice"></span>
+                </div>
+      	</div>
+		
+	</div>  
+		 
+	<div class="header-menu" id="header-menu">
+      <div class="conteneur-reduit">
+		  <div class="cross" id="burger-close" onclick="document.getElementById('burger-down').classList.remove('hide'); document.getElementById('burger-close').classList.add('hide');document.getElementById('header-menu').style.display = 'none';document.getElementById('flags').style.zIndex = '1'">
+			<strong>X</strong>
+		</div>
+		  <div class="menu-navbar">
+			<nav>
+          		<a href="https://newsaiige.com/contact/">E-shop</a>
+          		<a href="https://newsaiige.com/faq/">Soins</a>
+          		<a href="https://newsaiige.com/qui-sommes-nous-2/">Abonnements</a>
+          		<a href="https://newsaiige.com/nos-news/">Tarifs</a>
+                <a href="https://newsaiige.com/nos-news/">Blog</a>
+                <a href="https://newsaiige.com/nos-news/">Carte Cadeau</a>
+        	</nav>
+		</div>
+        <div class="partner">
+			<a href="https://www.planity.com/maderotherapie-newsaiige-83130-la-garde" class="btn-reservation">Reservez Votre Soin</a>
+		</div>
+		
+      </div>
+    </div>
+   </div>
+	<?php
+	return ob_get_clean();
+}
+add_shortcode('header_personnalise', 'header_personnalise_shortcode');
