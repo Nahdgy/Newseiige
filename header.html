@@ -216,9 +216,36 @@ function header_personnalise_shortcode() {
 		jQuery.post(wc_add_to_cart_params.ajax_url, { action: 'get_mini_panier' }, function(response) {
 			if (response && response.items) {
 			var total = 0;
-			response.items.forEach(function(item){ total += item.qty; });
+			var totalPrice = 0;
+			response.items.forEach(function(item){ 
+				total += item.qty; 
+				// Calcul du prix total si les données de prix sont disponibles
+				if (item.price && item.qty) {
+					totalPrice += parseFloat(item.price) * item.qty;
+				}
+			});
 			var badge = document.getElementById('panier-count');
+			var drawerCount = document.getElementById('panier-drawer-count');
+			var drawerTotal = document.getElementById('panier-total');
+			
 			if (badge) badge.textContent = total;
+			if (drawerCount) drawerCount.textContent = total;
+			if (drawerTotal) {
+				// Format du prix en euros avec 2 décimales
+				drawerTotal.textContent = totalPrice.toFixed(2).replace('.', ',') + ' €';
+			}
+			
+			// Si pas de données de prix dans la réponse, on peut faire un appel séparé
+			if (!response.total && drawerTotal) {
+				// Fallback : récupérer le total via WooCommerce
+				jQuery.post(wc_add_to_cart_params.ajax_url, { action: 'get_cart_total' }, function(totalResponse) {
+					if (totalResponse && totalResponse.total) {
+						drawerTotal.textContent = totalResponse.total;
+					}
+				});
+			} else if (response.total && drawerTotal) {
+				drawerTotal.textContent = response.total;
+			}
 			}
 		});
 		}
@@ -316,7 +343,7 @@ function header_personnalise_shortcode() {
 				}
 				.header-menu .dropdown-content-sub a:hover {
 						background: #ececec;
-						color: #FF3F22 !important;
+						color: #82897F !important;
 				}
 				/* Pour éviter que le sous-menu ne soit coupé */
 				.header-menu .dropdown-content {
@@ -375,7 +402,7 @@ function header_personnalise_shortcode() {
 			border-radius: 4px;
 		}
 		.dropdown-content-sub::-webkit-scrollbar-thumb {
-			background: #FF3F22;
+			background: #82897F;
 			border-radius: 4px;
 		}
 		.dropdown-content-sub::-webkit-scrollbar-thumb:hover {
@@ -395,7 +422,7 @@ function header_personnalise_shortcode() {
 		}
 		.dropdown-content-sub a:hover {
 			background: #ececec;
-			color: #FF3F22 !important;
+			color: #82897F !important;
 		}
 		/* Pour éviter que le sous-menu ne soit coupé */
 		.dropdown-content {
@@ -484,10 +511,7 @@ function header_personnalise_shortcode() {
 	    height:2rem;
 	}
 	  
-	  .actions-header a{
-	  display: flex;
-	  align-items: flex-end;
-	}
+	
     .cart-account_container {
         display: flex;
         align-items: center;
@@ -753,18 +777,18 @@ function header_personnalise_shortcode() {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 1rem;
-        border-bottom: 1px solid #eee;
+        margin: 1rem;
+        border-bottom: 1.7px solid #82897F;
     }
     .fermer-drawer {
         background: none;
         border: none;
-        font-size: 2rem;
+        font-size: 4rem;
         cursor: pointer;
 		color: #000;
     }
 	.fermer-drawer:hover {
-		background-color: #FF3F22;
+		background-color: #82897F;
 	}
     .drawer-content {
 		display: flex;
@@ -796,7 +820,7 @@ function header_personnalise_shortcode() {
 	height: 0;
 	border-top: 9px solid transparent;
 	border-bottom: 9px solid transparent;
-	border-left: 12px solid #FF3F22;
+	border-left: 12px solid #82897F;
 	position: absolute;
 	right: 0;
 	top: 0;
@@ -819,7 +843,7 @@ function header_personnalise_shortcode() {
 	align-items: center;
 	}
 	.fil-ariane a {
-	color: #FF3F22;
+	color: #82897F;
 	text-decoration: none;
 	font-weight: 700;
 	transition: color 0.2s;
@@ -830,7 +854,7 @@ function header_personnalise_shortcode() {
 	}
 	.fil-ariane span {
 	margin: 0 6px;
-	color: #FF3F22;
+	color: #82897F;
 	font-size: 18px;
 	font-weight: bold;
 	}
@@ -839,18 +863,92 @@ function header_personnalise_shortcode() {
 		width: 100%;
 		justify-content: center;
 	}
-	.cart-link{
-		background-color: #000;
-		border-radius:10px;
-		color:#fff !important;
-		padding: 14px;
-		font-size: 24px;
+	
+	/* Conteneur pour les boutons du drawer */
+	.drawer-buttons {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 10px;
+		margin-top: 20px;
+		border-top: solid 1.7px #82897F;
+	}
+
+	.drawer-buttons a {
+		width: 100%;
+	}
+	
+	/* Section du total */
+	.total-text {
+		padding: 15px;
+		margin-bottom: 15px;
+		display: grid;
+		grid-template-columns: 1fr auto;
+		grid-template-rows: auto auto;
+		gap: 8px 15px;
+		width: 100%;
+	}
+	
+	.total-text h4 {
+		margin: 0;
+		font-size: 18px;
 		font-weight: 600;
-		justify-content: center;
-		margin-top: 5%;
+		color: #333;
+		font-family: 'Montserrat', sans-serif;
+		grid-column: 1;
+		grid-row: 1;
+		align-self: center;
+	}
+	
+	.total-text p {
+		margin: 0;
+		font-size: 12px;
+		color: #666;
+		font-style: italic;
+		grid-column: 1 / -1;
+		grid-row: 2;
+	}
+	
+	#panier-total {
+		color: #82897F;
+		font-weight: 700;
+		font-size: 18px;
+		grid-column: 2;
+		grid-row: 1;
+		align-self: center;
+		justify-self: end;
+	}
+	
+	.cart-link{
+		background-color: #fff;
+		border-radius:30px;
+		border: solid 1px #000;
+		color:#000 !important;
+		padding: 14px;
+		font-size: 18px;
+		font-weight: 500;
+		text-align: center;
+		text-decoration: none;
+		transition: transform 0.3s ease;
 	}
 	.cart-link:hover{
-		background-color: #FF3F22;
+		transform: scale(1.05);
+	}
+	
+	/* Bouton de paiement */
+	.checkout-link {
+		background-color: #000;
+		border-radius: 30px;
+		color: #fff !important;
+		padding: 14px;
+		font-size: 18px;
+		font-weight: 500;
+		text-align: center;
+		text-decoration: none;
+		transition: transform 0.3s ease;
+	}
+	.checkout-link:hover {
+		transform: scale(1.05);
 	}
 	
 	/* Drawer menu burger à gauche */
@@ -892,7 +990,7 @@ function header_personnalise_shortcode() {
     }
     .drawer-nav a:hover {
         background-color: #f5f5f5;
-        color: #FF3F22 !important;
+        color: #82897F !important;
         font-weight: 600;
         padding-left: 10px;
     }
@@ -957,7 +1055,7 @@ function header_personnalise_shortcode() {
             	<div style="position:relative;">
       				<a href="https://newsaiige.com/panier/" id="ouvrir-panier" style="position:relative;display:inline-block;">
         				<img src="http://newsaiige.com/wp-content/uploads/2025/10/icone_panier.png" alt="Panier" style="position:relative;">
-        				<span id="panier-count" style="position:absolute;top:-7px;right:-7px;background:#FF3F22;color:#fff;border-radius:50%;min-width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;padding:0 6px;box-shadow:0 1px 4px rgba(0,0,0,0.12);z-index:2;">0</span>
+        				<span id="panier-count" style="position:absolute;top:-7px;right:-7px;background:#82897F;color:#fff;border-radius:50%;min-width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;padding:0 6px;box-shadow:0 1px 4px rgba(0,0,0,0.12);z-index:2;">0</span>
       				</a>
     			</div>
                 <span>|</span>
@@ -972,14 +1070,22 @@ function header_personnalise_shortcode() {
                 
             <div id="drawer-panier" class="drawer-panier">
                 <div class="drawer-header">
-                    <h2>Votre panier</h2>
+                    <h2>Panier (<span id="panier-drawer-count">0</span> articles)</h2>
                     <button id="fermer-drawer" class="fermer-drawer">&times;</button>	
                 </div>
                 <div class="drawer-content">
-                    <?php echo do_shortcode('[mini_panier_text_livraison]'); ?>
                     <?php echo do_shortcode('[mini_panier_produits]'); ?>
-                    <?php /*echo do_shortcode('[mini_panier_recommandes]');*/ ?>
+					<div class="drawer-buttons">
+						<div class="total-text">
+							<h4>Total estimé </h4>
+							<span id="panier-total">0,00 €</span>
+							<p>Les taxes et les frais d'expédition sont calculés au moment du paiement.</p>
+						</div>
+						<a href="https://newsaiige.com/checkout/" class="checkout-link">Passer commande</a>
                         <a href="https://newsaiige.com/panier/" class="cart-link">Voir le panier</a>
+						<p><img src= "http://newsaiige.com/wp-content/uploads/2025/10/lock.png"> Paiement sécurisé</p>
+                    </div>
+					
                 </div>
             </div>
             
