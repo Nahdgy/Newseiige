@@ -586,18 +586,35 @@ function header_personnalise_shortcode() {
 	  
 	  @media screen and (max-width: 530px) {
 		  .header-middle{
-			  display:grid;
-			  grid-template-columns: 2fr auto;
+			  display: flex;
+			  flex-direction: row;
+			  justify-content: space-between;
+			  align-items: center;
+			  width: 100%;
+			  padding: 15px 10px;
+			  gap: 10px;
 		  }
 		  .actions-header{
-			  margin-top:1rem
+			  margin-top: 0;
 		  }
 		  .logos{
-			 width:100%;
-			 max-width: 100%;
+			 flex: 1;
+			 width: auto;
+			 max-width: none;
+			 justify-content: center;
 		  }
 		  .logos img {
-			  height: 45px;
+			  height: 35px;
+		  }
+		  .burger-icon {
+			  flex-shrink: 0;
+		  }
+		  .cart-account_container {
+			  flex-shrink: 0;
+			  padding: 8px 12px;
+		  }
+		  .partner {
+			  display: none;
 		  }
 	}
 	  
@@ -633,40 +650,35 @@ function header_personnalise_shortcode() {
 	  }
 	  
 	  @media screen and (max-width: 1129px) {
-		  .header-menu{
-			  display:none !important;
+		.header-menu{
+			display:none !important;
 		}
-		  .search{
-			  display:none;
-		  }
-		  .search-mobile{
-			  display:flex;
-		  }
+		.search{
+			display:none;
+		}
+		.menu-navbar nav{
+			display: none !important;
+		}
+		.search-mobile{
+			display:flex;
+		}
 	  	.logos-en-ligne{
 			  display:none;
 		  }
-	  .conteneur-reduit {
+	  	.conteneur-reduit {
 			display: flex;
 			flex-direction:column;
 			align-items: center;
 		  width: 20rem;
 		}
-		  .cross{
-			  width:100%;
-			  display: flex;
-			  justify-content: flex-end;
-		  }
-	  	.menu-navbar{
-		  display: flex;
-			flex-direction:column;
-			align-items: flex-start;
+		.cross{
 			width:100%;
-			margin-bottom:10px;
-	  	}
-		  .menu-navbar nav{
-			  display: flex;
-    		  flex-direction: column;
-		  }
+			display: flex;
+			justify-content: flex-end;
+		}
+		.partner{
+			display:none;
+		}
 	}
 
     .header-menu nav a {
@@ -1029,98 +1041,96 @@ function header_personnalise_shortcode() {
             Nouveau: Découvrez l'alliée incontournable pour une peau LISSÉE & TONIFIÉE!
             </p>
 		</section>
-	  
-	  <div class="header-middle">
-      	<div class="logos">
-            <a href="https://newsaiige.com/">
-			    <img src="http://newsaiige.com/wp-content/uploads/2025/05/cropped-cropped-Logo_noir_fondtransparent-scaled-1-e1748357681317.png" alt="">
-            </a>
-      	</div>
-        <div class="menu-navbar">
-            <nav>
-                <a href="https://newsaiige.com/boutique/">E-shop</a>
-                <a href="https://newsaiige.com/soins/">Soins</a>
-                <a href="https://newsaiige.com/abonnement/">Abonnements</a>
-                <a href="https://newsaiige.com/tarifs/">Tarifs</a>
-                <a href="https://newsaiige.com/blog/">Blog</a>
-                <a href="https://newsaiige.com/carte-cadeau/">Carte Cadeau</a>
-            </nav>
-	    </div>
-
-      	<div class="actions-header">
-            <div class="partner">
-			    <a href="https://www.planity.com/maderotherapie-newsaiige-83130-la-garde" class="btn-reservation">Reservez Votre Soin</a>
-		    </div>
-			<div class="cart-account_container">
-            	<div style="position:relative;">
-      				<a href="https://newsaiige.com/panier/" id="ouvrir-panier" style="position:relative;display:inline-block;">
-        				<img src="http://newsaiige.com/wp-content/uploads/2025/10/icone_panier.png" alt="Panier" style="position:relative;">
-        				<span id="panier-count" style="position:absolute;top:-7px;right:-7px;background:#82897F;color:#fff;border-radius:50%;min-width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;padding:0 6px;box-shadow:0 1px 4px rgba(0,0,0,0.12);z-index:2;">0</span>
-      				</a>
-    			</div>
-                <span>|</span>
-                <div>
-    				<a href="https://newsaiige.com/mon-compte/">
-    				<img src="http://newsaiige.com/wp-content/uploads/2025/10/icone_mon_compte.png" alt="Compte">
-    				</a>
-    			</div>
+	  	
+		<div class="header-middle">
+			<div class="burger-icon" id="burger-down">
+				<span class="burger-slice"></span>
+				<span class="burger-slice"></span>
+				<span class="burger-slice"></span>
 			</div>
-            <!-- Drawer vertical à droite -->
-            <div id="drawer-overlay" class="drawer-overlay"></div>
-                
-            <div id="drawer-panier" class="drawer-panier">
-                <div class="drawer-header">
-                    <h2>Panier (<span id="panier-drawer-count">0</span> articles)</h2>
-                    <button id="fermer-drawer" class="fermer-drawer">&times;</button>	
-                </div>
-                <div class="drawer-content">
-                    <?php echo do_shortcode('[mini_panier_produits]'); ?>
-					<div class="drawer-buttons">
-						<div class="total-text">
-							<h4>Total estimé </h4>
-							<span id="panier-total">0,00 €</span>
-							<p>Les taxes et les frais d'expédition sont calculés au moment du paiement.</p>
-						</div>
-						<a href="https://newsaiige.com/checkout/" class="checkout-link">Passer commande</a>
-                        <a href="https://newsaiige.com/panier/" class="cart-link">Voir le panier</a>
-						<p><img src= "http://newsaiige.com/wp-content/uploads/2025/10/lock.png"> Paiement sécurisé</p>
-                    </div>
+			<div class="logos">
+				<a href="https://newsaiige.com/">
+					<img src="http://newsaiige.com/wp-content/uploads/2025/05/cropped-cropped-Logo_noir_fondtransparent-scaled-1-e1748357681317.png" alt="">
+				</a>
+			</div>
+			<div class="menu-navbar">
+				<nav>
+					<a href="https://newsaiige.com/boutique/">E-shop</a>
+					<a href="https://newsaiige.com/soins/">Soins</a>
+					<a href="https://newsaiige.com/abonnement/">Abonnements</a>
+					<a href="https://newsaiige.com/tarifs/">Tarifs</a>
+					<a href="https://newsaiige.com/blog/">Blog</a>
+					<a href="https://newsaiige.com/carte-cadeau/">Carte Cadeau</a>
+				</nav>
+			</div>
+
+			<div class="actions-header">
+				<div class="partner">
+					<a href="https://www.planity.com/maderotherapie-newsaiige-83130-la-garde" class="btn-reservation">Reservez Votre Soin</a>
+				</div>
+				<div class="cart-account_container">
+					<div style="position:relative;">
+						<a href="https://newsaiige.com/panier/" id="ouvrir-panier" style="position:relative;display:inline-block;">
+							<img src="http://newsaiige.com/wp-content/uploads/2025/10/icone_panier.png" alt="Panier" style="position:relative;">
+							<span id="panier-count" style="position:absolute;top:-7px;right:-7px;background:#82897F;color:#fff;border-radius:50%;min-width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;padding:0 6px;box-shadow:0 1px 4px rgba(0,0,0,0.12);z-index:2;">0</span>
+						</a>
+					</div>
+					<span>|</span>
+					<div>
+						<a href="https://newsaiige.com/mon-compte/">
+						<img src="http://newsaiige.com/wp-content/uploads/2025/10/icone_mon_compte.png" alt="Compte">
+						</a>
+					</div>
+				</div>
+				<!-- Drawer vertical à droite -->
+				<div id="drawer-overlay" class="drawer-overlay"></div>
 					
-                </div>
-            </div>
-            
-            <!-- Drawer menu burger à gauche -->
-            <div id="drawer-menu-overlay" class="drawer-overlay"></div>
-                
-            <div id="drawer-menu" class="drawer-menu">
-                <div class="drawer-header">
-                    <h2>Menu</h2>
-                    <button id="fermer-drawer-menu" class="fermer-drawer">&times;</button>	
-                </div>
-                <div class="drawer-content">
-                    <nav class="drawer-nav">
-                        <a href="https://newsaiige.com/contact/">E-shop</a>
-                        <a href="https://newsaiige.com/faq/">Soins</a>
-                        <a href="https://newsaiige.com/qui-sommes-nous-2/">Abonnements</a>
-                        <a href="https://newsaiige.com/nos-news/">Tarifs</a>
-                        <a href="https://newsaiige.com/nos-news/">Blog</a>
-                        <a href="https://newsaiige.com/nos-news/">Carte Cadeau</a>
-                    </nav>
-                    <div class="drawer-actions">
-                        <a href="https://www.planity.com/maderotherapie-newsaiige-83130-la-garde" class="btn-reservation">Reservez Votre Soin</a>
-                    </div>
-                </div>
-            </div>
-                <div class="burger-icon" id="burger-down">
-                    <span class="burger-slice"></span>
-                    <span class="burger-slice"></span>
-                    <span class="burger-slice"></span>
-                </div>
-      	</div>
-		
-	</div>  
-		 
-   </div>
+				<div id="drawer-panier" class="drawer-panier">
+					<div class="drawer-header">
+						<h2>Panier (<span id="panier-drawer-count">0</span> articles)</h2>
+						<button id="fermer-drawer" class="fermer-drawer">&times;</button>	
+					</div>
+					<div class="drawer-content">
+						<?php echo do_shortcode('[mini_panier_produits]'); ?>
+						<div class="drawer-buttons">
+							<div class="total-text">
+								<h4>Total estimé </h4>
+								<span id="panier-total">0,00 €</span>
+								<p>Les taxes et les frais d'expédition sont calculés au moment du paiement.</p>
+							</div>
+							<a href="https://newsaiige.com/checkout/" class="checkout-link">Passer commande</a>
+							<a href="https://newsaiige.com/panier/" class="cart-link">Voir le panier</a>
+							<p><img src= "http://newsaiige.com/wp-content/uploads/2025/10/lock.png"> Paiement sécurisé</p>
+						</div>
+						
+					</div>
+				</div>
+				
+				<!-- Drawer menu burger à gauche -->
+				<div id="drawer-menu-overlay" class="drawer-overlay"></div>
+					
+				<div id="drawer-menu" class="drawer-menu">
+					<div class="drawer-header">
+						<h2>Menu</h2>
+						<button id="fermer-drawer-menu" class="fermer-drawer">&times;</button>	
+					</div>
+					<div class="drawer-content">
+						<nav class="drawer-nav">
+							<a href="https://newsaiige.com/boutique/">E-shop</a>
+							<a href="https://newsaiige.com/soins/">Soins</a>
+							<a href="https://newsaiige.com/abonnement/">Abonnements</a>
+							<a href="https://newsaiige.com/tarifs/">Tarifs</a>
+							<a href="https://newsaiige.com/blog/">Blog</a>
+							<a href="https://newsaiige.com/carte-cadeau/">Carte Cadeau</a>
+						</nav>
+						<div class="drawer-actions">
+							<a href="https://www.planity.com/maderotherapie-newsaiige-83130-la-garde" class="btn-reservation">Reservez Votre Soin</a>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>  
+	</div>
 	<?php
 	return ob_get_clean();
 }
