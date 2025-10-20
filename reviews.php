@@ -1,30 +1,58 @@
-<?php
-/**
- * Plugin Name: NewSaiige Reviews System
- * Description: Système de gestion des avis clients pour NewSaiige avec carousel et notation étoilée
- * Version: 1.0.0
- * Author: NewSaiige
- */
-
-// Sécurité : empêcher l'accès direct
-if (!defined('ABSPATH')) {
-    exit;
-}
-
 function newsaiige_reviews_shortcode($atts) {
     $atts = shortcode_atts(array(
         'limit' => 10,
         'show_form' => true
     ), $atts);
     
-    // Enqueue les scripts nécessaires
-    wp_enqueue_script('newsaiige-reviews-js', '', array('jquery'), '1.0', true);
-    wp_add_inline_script('newsaiige-reviews-js', '
-        const newsaiige_ajax = {
-            ajax_url: "' . admin_url('admin-ajax.php') . '",
-            nonce: "' . wp_create_nonce('newsaiige_review_nonce') . '"
-        };
-    ');
+    // Récupérer les avis directement depuis la base de données
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'newsaiige_reviews';
+    
+    // Récupérer les avis approuvés
+    $reviews = $wpdb->get_results($wpdb->prepare(
+        "SELECT customer_name, comment, rating, created_at 
+         FROM $table_name 
+         WHERE status = 'approved' 
+         ORDER BY created_at DESC 
+         LIMIT %d",
+        intval($atts['limit'])
+    ));
+    
+    // Statistiques
+    $stats = $wpdb->get_row(
+        "SELECT 
+            COUNT(*) as total_reviews,
+            AVG(rating) as average_rating
+         FROM $table_name 
+         WHERE status = 'approved'"
+    );
+    
+    // Si pas de données, utiliser des valeurs par défaut
+    if (!$reviews || empty($reviews)) {
+        $reviews = array(
+            (object)array('customer_name' => 'Marie L.', 'comment' => 'J\'ai récemment testé l\'huile corps nacrée de Newsaiige, et je dois dire que c\'est une belle découverte ! Sa texture légère et non grasse s\'applique facilement et laisse la peau douce, hydratée et délicatement parfumée.', 'rating' => 5),
+            (object)array('customer_name' => 'Sophie D.', 'comment' => 'Produit exceptionnel ! Après plusieurs semaines d\'utilisation, ma peau est visiblement plus ferme et éclatante. L\'effet nacré est subtil et très élégant. Je recommande vivement !', 'rating' => 5),
+            (object)array('customer_name' => 'Amélie R.', 'comment' => 'Une huile de qualité premium ! La texture est divine, l\'absorption rapide et le parfum délicat. Mes clientes adorent et moi aussi. Un incontournable pour mes soins.', 'rating' => 5),
+            (object)array('customer_name' => 'Camille B.', 'comment' => 'Enfin une huile qui tient ses promesses ! Ma peau n\'a jamais été aussi douce et lumineuse. L\'effet hydratant dure toute la journée. Un vrai coup de cœur !', 'rating' => 5),
+            (object)array('customer_name' => 'Laura M.', 'comment' => 'Je suis esthéticienne et j\'utilise cette huile dans mes soins. Les résultats sont bluffants ! Mes clientes me demandent constamment quel produit j\'utilise.', 'rating' => 5),
+            (object)array('customer_name' => 'Emma F.', 'comment' => 'Texture incroyable, parfum subtil et résultats visibles dès les premières applications. Cette huile a transformé ma routine beauté. Je ne peux plus m\'en passer !', 'rating' => 5)
+        );
+    }
+    
+    if (!$stats) {
+        $stats = (object)array('total_reviews' => count($reviews), 'average_rating' => 5.0);
+    }
+    
+    // Enqueue les scripts nécessaires seulement si le formulaire est activé
+    if ($atts['show_form']) {
+        wp_enqueue_script('newsaiige-reviews-js', '', array('jquery'), '1.0', true);
+        wp_add_inline_script('newsaiige-reviews-js', '
+            const newsaiige_ajax = {
+                ajax_url: "' . admin_url('admin-ajax.php') . '",
+                nonce: "' . wp_create_nonce('newsaiige_review_nonce') . '"
+            };
+        ');
+    }
     
     ob_start();
     ?>
@@ -83,9 +111,10 @@ function newsaiige_reviews_shortcode($atts) {
 
     .carousel-container {
         position: relative;
-        max-width: 1400px;
+        max-width: 1200px;
         margin: 0 auto;
         overflow: hidden;
+        padding: 12px 0px;
     }
 
     .carousel-track {
@@ -100,11 +129,9 @@ function newsaiige_reviews_shortcode($atts) {
         -webkit-backdrop-filter: blur(15px) saturate(180%);
         border-radius: 25px;
         padding: 40px 30px;
-        min-width: 400px;
-        box-shadow: 
-            0 20px 40px rgba(0, 0, 0, 0.1),
-            0 10px 20px rgba(0, 0, 0, 0.05),
-            inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        width: calc(33.333% - 20px);
+        max-width: 380px;
+        min-width: 280px;
         border: 1px solid rgba(255, 255, 255, 0.2);
         position: relative;
         transition: all 0.3s ease;
@@ -333,7 +360,9 @@ function newsaiige_reviews_shortcode($atts) {
         }
         
         .review-card {
-            min-width: 300px;
+            width: calc(100% - 40px) !important;
+            min-width: 280px;
+            max-width: 400px;
             padding: 30px 20px;
         }
         
@@ -343,12 +372,15 @@ function newsaiige_reviews_shortcode($atts) {
         
         .carousel-track {
             gap: 20px;
+            justify-content: center;
         }
     }
 
     @media (max-width: 480px) {
         .review-card {
-            min-width: 280px;
+            width: calc(100% - 20px) !important;
+            min-width: 260px;
+            max-width: 350px;
         }
         
         .modal-content {
@@ -358,6 +390,10 @@ function newsaiige_reviews_shortcode($atts) {
         .reviews-title {
             font-size: 1.8rem;
         }
+        
+        .carousel-track {
+            gap: 15px;
+        }
     }
     </style>
 
@@ -365,7 +401,7 @@ function newsaiige_reviews_shortcode($atts) {
         <div class="reviews-header">
             <h2 class="reviews-title">Elles aiment NewSaiige !</h2>
             <div class="reviews-rating">
-                <span class="rating-score">5,0</span>
+                <span class="rating-score"><?php echo number_format($stats->average_rating, 1, ',', ''); ?></span>
                 <div class="rating-stars">
                     <span class="star">★</span>
                     <span class="star">★</span>
@@ -373,60 +409,27 @@ function newsaiige_reviews_shortcode($atts) {
                     <span class="star">★</span>
                     <span class="star">★</span>
                 </div>
-                <span class="rating-count">(242)</span>
+                <span class="rating-count">(<?php echo $stats->total_reviews; ?>)</span>
             </div>
         </div>
         
         <div class="carousel-container">
             <div class="carousel-track" id="carouselTrack">
+                <?php foreach ($reviews as $review): ?>
                 <div class="review-card">
                     <div class="review-text">
-                        "J'ai récemment testé l'huile corps nacrée de Newsaiige, et je dois dire que c'est une belle découverte ! Sa texture légère et non grasse s'applique facilement et laisse la peau douce, hydratée et délicatement parfumée."
+                        "<?php echo esc_html($review->comment); ?>"
                     </div>
-                    <div class="review-author">- Marie L.</div>
+                    <div class="review-author">- <?php echo esc_html($review->customer_name); ?></div>
                 </div>
-                
-                <div class="review-card">
-                    <div class="review-text">
-                        "Produit exceptionnel ! Après plusieurs semaines d'utilisation, ma peau est visiblement plus ferme et éclatante. L'effet nacré est subtil et très élégant. Je recommande vivement !"
-                    </div>
-                    <div class="review-author">- Sophie D.</div>
-                </div>
-                
-                <div class="review-card">
-                    <div class="review-text">
-                        "Une huile de qualité premium ! La texture est divine, l'absorption rapide et le parfum délicat. Mes clientes adorent et moi aussi. Un incontournable pour mes soins."
-                    </div>
-                    <div class="review-author">- Amélie R.</div>
-                </div>
-                
-                <div class="review-card">
-                    <div class="review-text">
-                        "Enfin une huile qui tient ses promesses ! Ma peau n'a jamais été aussi douce et lumineuse. L'effet hydratant dure toute la journée. Un vrai coup de cœur !"
-                    </div>
-                    <div class="review-author">- Camille B.</div>
-                </div>
-                
-                <div class="review-card">
-                    <div class="review-text">
-                        "Je suis esthéticienne et j'utilise cette huile dans mes soins. Les résultats sont bluffants ! Mes clientes me demandent constamment quel produit j'utilise."
-                    </div>
-                    <div class="review-author">- Laura M.</div>
-                </div>
-                
-                <div class="review-card">
-                    <div class="review-text">
-                        "Texture incroyable, parfum subtil et résultats visibles dès les premières applications. Cette huile a transformé ma routine beauté. Je ne peux plus m'en passer !"
-                    </div>
-                    <div class="review-author">- Emma F.</div>
-                </div>
+                <?php endforeach; ?>
             </div>
         </div>
         
         <div class="carousel-controls">
             <button class="carousel-btn" id="prevBtn">‹</button>
             <span class="carousel-pagination">
-                <span id="currentSlide">1</span> / <span id="totalSlides">6</span>
+                <span id="currentSlide">1</span> / <span id="totalSlides"><?php echo ceil(count($reviews) / 3); ?></span>
             </span>
             <button class="carousel-btn" id="nextBtn">›</button>
         </div>
@@ -475,76 +478,132 @@ function newsaiige_reviews_shortcode($atts) {
     </div>
 
     <script>
-    // Carousel functionality
+    // Variables globales du carousel
     let currentIndex = 0;
-    const track = document.getElementById('carouselTrack');
-    const cards = document.querySelectorAll('.review-card');
-    const totalSlides = cards.length;
-    const prevBtn = document.getElementById('prevBtn');
-    const nextBtn = document.getElementById('nextBtn');
-    const currentSlideSpan = document.getElementById('currentSlide');
-    const totalSlidesSpan = document.getElementById('totalSlides');
+    let totalSlides = <?php echo count($reviews); ?>;
 
-    // Calculate visible cards based on screen width
-    function getVisibleCards() {
-        if (window.innerWidth <= 480) return 1;
-        if (window.innerWidth <= 768) return 1;
-        if (window.innerWidth <= 1200) return 2;
-        return 3;
-    }
+    // Fonction d'initialisation du carousel
+    function initializeCarousel() {
+        const track = document.getElementById('carouselTrack');
+        const cards = track.querySelectorAll('.review-card');
+        totalSlides = cards.length;
+        
+        if (totalSlides === 0) return;
+        
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const currentSlideSpan = document.getElementById('currentSlide');
+        const totalSlidesSpan = document.getElementById('totalSlides');
 
-    function updateCarousel() {
-        const visibleCards = getVisibleCards();
-        const cardWidth = cards[0].offsetWidth + 30; // card width + gap
-        const offset = currentIndex * cardWidth;
-        
-        track.style.transform = `translateX(-${offset}px)`;
-        
-        // Update pagination
-        currentSlideSpan.textContent = currentIndex + 1;
-        totalSlidesSpan.textContent = Math.ceil(totalSlides / visibleCards);
-        
-        // Update button states
-        prevBtn.disabled = currentIndex === 0;
-        nextBtn.disabled = currentIndex >= totalSlides - visibleCards;
-    }
+        // Calculate visible cards based on screen width
+        function getVisibleCards() {
+            if (window.innerWidth <= 480) return 1;
+            if (window.innerWidth <= 768) return 1;
+            if (window.innerWidth <= 1200) return 2;
+            return 3;
+        }
 
-    function nextSlide() {
-        const visibleCards = getVisibleCards();
-        if (currentIndex < totalSlides - visibleCards) {
-            currentIndex++;
+        function updateCarousel() {
+            const containerWidth = track.parentElement.offsetWidth;
+            const cardsPerGroup = window.innerWidth <= 768 ? 1 : 3; // 1 carte sur mobile, 3 sur desktop
+            const currentGroup = Math.floor(currentIndex / cardsPerGroup);
+            
+            // Calcul de la largeur optimale pour les cartes
+            const gapBetweenCards = window.innerWidth <= 480 ? 15 : 30;
+            const totalGaps = Math.max(0, (cardsPerGroup - 1) * gapBetweenCards);
+            const containerPadding = 40; // padding des côtés
+            const availableWidth = Math.min(containerWidth - containerPadding, 1200);
+            
+            let cardWidth;
+            if (cardsPerGroup === 1) {
+                // Sur mobile : largeur maximale avec marges
+                cardWidth = Math.min(availableWidth, 400);
+            } else {
+                // Sur desktop : largeur calculée pour 3 cartes
+                cardWidth = (availableWidth - totalGaps) / cardsPerGroup;
+                cardWidth = Math.max(280, Math.min(cardWidth, 380)); // Min 280px, Max 380px
+            }
+            
+            // Appliquer la largeur aux cartes
+            cards.forEach(card => {
+                card.style.width = `${cardWidth}px`;
+                card.style.flexShrink = '0';
+            });
+            
+            // Centrage du groupe de cartes
+            let groupWidth, offset;
+            if (cardsPerGroup === 1) {
+                // Centrer la carte unique
+                offset = (containerWidth - cardWidth) / 2;
+                const startCardIndex = currentGroup * cardsPerGroup;
+                offset = offset - (startCardIndex * (cardWidth + gapBetweenCards));
+            } else {
+                // Centrer le groupe de 3 cartes
+                groupWidth = (cardWidth * cardsPerGroup) + totalGaps;
+                const startOffset = (containerWidth - groupWidth) / 2;
+                const startCardIndex = currentGroup * cardsPerGroup;
+                offset = startOffset - (startCardIndex * (cardWidth + gapBetweenCards));
+            }
+            
+            track.style.transform = `translateX(${offset}px)`;
+            
+            // Update pagination
+            const totalGroups = Math.ceil(totalSlides / cardsPerGroup);
+            if (currentSlideSpan) currentSlideSpan.textContent = currentGroup + 1;
+            if (totalSlidesSpan) totalSlidesSpan.textContent = totalGroups;
+            
+            // Update button states
+            if (prevBtn) prevBtn.disabled = currentGroup === 0;
+            if (nextBtn) nextBtn.disabled = currentGroup >= totalGroups - 1;
+        }
+
+        function nextSlide() {
+            const cardsPerGroup = window.innerWidth <= 768 ? 1 : 3;
+            const totalGroups = Math.ceil(totalSlides / cardsPerGroup);
+            const currentGroup = Math.floor(currentIndex / cardsPerGroup);
+            
+            if (currentGroup < totalGroups - 1) {
+                currentIndex = (currentGroup + 1) * cardsPerGroup;
+                updateCarousel();
+            }
+        }
+
+        function prevSlide() {
+            const cardsPerGroup = window.innerWidth <= 768 ? 1 : 3;
+            const currentGroup = Math.floor(currentIndex / cardsPerGroup);
+            
+            if (currentGroup > 0) {
+                currentIndex = (currentGroup - 1) * cardsPerGroup;
+                updateCarousel();
+            }
+        }
+
+        // Event listeners
+        if (nextBtn) nextBtn.addEventListener('click', nextSlide);
+        if (prevBtn) prevBtn.addEventListener('click', prevSlide);
+
+        // Auto-scroll every 5 seconds
+        setInterval(() => {
+            const cardsPerGroup = window.innerWidth <= 768 ? 1 : 3;
+            const totalGroups = Math.ceil(totalSlides / cardsPerGroup);
+            const currentGroup = Math.floor(currentIndex / cardsPerGroup);
+            
+            if (currentGroup >= totalGroups - 1) {
+                currentIndex = 0;
+            } else {
+                currentIndex = (currentGroup + 1) * cardsPerGroup;
+            }
             updateCarousel();
-        }
-    }
+        }, 5000);
 
-    function prevSlide() {
-        if (currentIndex > 0) {
-            currentIndex--;
-            updateCarousel();
-        }
-    }
+        // Update on window resize
+        window.addEventListener('resize', updateCarousel);
 
-    // Event listeners
-    nextBtn.addEventListener('click', nextSlide);
-    prevBtn.addEventListener('click', prevSlide);
-
-    // Auto-scroll every 5 seconds
-    setInterval(() => {
-        const visibleCards = getVisibleCards();
-        if (currentIndex >= totalSlides - visibleCards) {
-            currentIndex = 0;
-        } else {
-            currentIndex++;
-        }
+        // Initialize
         updateCarousel();
-    }, 5000);
+    }
 
-    // Update on window resize
-    window.addEventListener('resize', updateCarousel);
-
-    // Initialize
-    updateCarousel();
-
+    <?php if ($atts['show_form']): ?>
     // Modal functionality
     function openModal() {
         document.getElementById('reviewModal').style.display = 'flex';
@@ -558,25 +617,32 @@ function newsaiige_reviews_shortcode($atts) {
 
     // Rating stars functionality
     let selectedRating = 0;
-    const ratingStars = document.querySelectorAll('.rating-star');
-
-    ratingStars.forEach(star => {
-        star.addEventListener('click', function() {
-            selectedRating = this.getAttribute('data-rating');
-            updateStars();
-        });
+    
+    function initializeStars() {
+        const ratingStars = document.querySelectorAll('.rating-star');
         
-        star.addEventListener('mouseover', function() {
-            const hoverRating = this.getAttribute('data-rating');
-            highlightStars(hoverRating);
+        ratingStars.forEach(star => {
+            star.addEventListener('click', function() {
+                selectedRating = this.getAttribute('data-rating');
+                updateStars();
+            });
+            
+            star.addEventListener('mouseover', function() {
+                const hoverRating = this.getAttribute('data-rating');
+                highlightStars(hoverRating);
+            });
         });
-    });
 
-    document.getElementById('ratingInput').addEventListener('mouseleave', function() {
-        updateStars();
-    });
+        const ratingInput = document.getElementById('ratingInput');
+        if (ratingInput) {
+            ratingInput.addEventListener('mouseleave', function() {
+                updateStars();
+            });
+        }
+    }
 
     function highlightStars(rating) {
+        const ratingStars = document.querySelectorAll('.rating-star');
         ratingStars.forEach((star, index) => {
             if (index < rating) {
                 star.classList.add('active');
@@ -590,125 +656,83 @@ function newsaiige_reviews_shortcode($atts) {
         highlightStars(selectedRating);
     }
 
-    // Form submission
-    document.getElementById('reviewForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        if (selectedRating === 0) {
-            alert('Veuillez sélectionner une note !');
-            return;
-        }
-        
-        // Récupérer les données du formulaire
-        const formData = new FormData();
-        formData.append('action', 'submit_newsaiige_review');
-        formData.append('customer_name', this.querySelector('input[type="text"]').value);
-        formData.append('customer_email', this.querySelector('input[type="email"]')?.value || '');
-        formData.append('rating', selectedRating);
-        formData.append('comment', this.querySelector('textarea').value);
-        formData.append('nonce', newsaiige_ajax.nonce);
-        
-        // Désactiver le bouton de soumission
-        const submitBtn = this.querySelector('.submit-btn');
-        const originalText = submitBtn.textContent;
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Envoi en cours...';
-        
-        // Envoyer la requête AJAX
-        fetch(newsaiige_ajax.ajax_url, {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert('Merci pour votre avis ! Il sera publié après modération.');
-                closeModal();
-                this.reset();
-                selectedRating = 0;
-                updateStars();
+    // Form submission (utilise les handlers existants de functions.php)
+    function initializeForm() {
+        const form = document.getElementById('reviewForm');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
                 
-                // Recharger les avis
-                loadReviews();
-            } else {
-                alert('Erreur: ' + (data.data || 'Une erreur est survenue'));
-            }
-        })
-        .catch(error => {
-            console.error('Erreur:', error);
-            alert('Une erreur est survenue. Veuillez réessayer.');
-        })
-        .finally(() => {
-            submitBtn.disabled = false;
-            submitBtn.textContent = originalText;
-        });
-    });
-
-    // Fonction pour charger les avis depuis WordPress
-    function loadReviews() {
-        fetch(`${newsaiige_ajax.ajax_url}?action=get_newsaiige_reviews&limit=20`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                updateCarouselWithNewReviews(data.data.reviews);
-                updateStats(data.data.stats);
-            }
-        })
-        .catch(error => console.error('Erreur lors du chargement des avis:', error));
-    }
-
-    // Fonction pour mettre à jour le carousel
-    function updateCarouselWithNewReviews(reviews) {
-        if (!reviews || reviews.length === 0) return;
-        
-        const track = document.getElementById('carouselTrack');
-        track.innerHTML = '';
-        
-        reviews.forEach(review => {
-            const card = document.createElement('div');
-            card.className = 'review-card';
-            
-            card.innerHTML = `
-                <div class="review-text">"${review.comment}"</div>
-                <div class="review-author">- ${review.customer_name}</div>
-            `;
-            
-            track.appendChild(card);
-        });
-        
-        // Réinitialiser le carousel
-        currentIndex = 0;
-        updateCarousel();
-    }
-
-    // Fonction pour mettre à jour les statistiques
-    function updateStats(stats) {
-        if (stats) {
-            const ratingScore = document.querySelector('.rating-score');
-            if (ratingScore && stats.average_rating) {
-                ratingScore.textContent = parseFloat(stats.average_rating).toFixed(1);
-            }
-            
-            const ratingCount = document.querySelector('.rating-count');
-            if (ratingCount && stats.total_reviews) {
-                ratingCount.textContent = `(${stats.total_reviews})`;
-            }
+                if (selectedRating === 0) {
+                    alert('Veuillez sélectionner une note !');
+                    return;
+                }
+                
+                // Utiliser les handlers AJAX existants de functions.php
+                const formData = new FormData();
+                formData.append('action', 'submit_newsaiige_review');
+                formData.append('customer_name', this.querySelector('input[name="customer_name"]').value);
+                formData.append('customer_email', this.querySelector('input[name="customer_email"]')?.value || '');
+                formData.append('rating', selectedRating);
+                formData.append('comment', this.querySelector('textarea[name="comment"]').value);
+                formData.append('nonce', newsaiige_ajax.nonce);
+                
+                const submitBtn = this.querySelector('.submit-btn');
+                const originalText = submitBtn.textContent;
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Envoi en cours...';
+                
+                fetch(newsaiige_ajax.ajax_url, {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Merci pour votre avis ! Il sera publié après modération.');
+                        closeModal();
+                        this.reset();
+                        selectedRating = 0;
+                        updateStars();
+                        // Recharger la page pour voir les nouveaux avis
+                        location.reload();
+                    } else {
+                        alert('Erreur: ' + (data.data || 'Une erreur est survenue'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                    alert('Une erreur est survenue. Veuillez réessayer.');
+                })
+                .finally(() => {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
+                });
+            });
         }
     }
-
-    // Charger les avis au chargement de la page
-    document.addEventListener('DOMContentLoaded', function() {
-        // Vérifier si les variables AJAX sont disponibles
-        if (typeof newsaiige_ajax !== 'undefined') {
-            loadReviews();
-        }
-    });
 
     // Close modal when clicking outside
-    document.getElementById('reviewModal').addEventListener('click', function(e) {
-        if (e.target === this) {
-            closeModal();
+    function initializeModal() {
+        const modal = document.getElementById('reviewModal');
+        if (modal) {
+            modal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeModal();
+                }
+            });
         }
+    }
+    <?php endif; ?>
+
+    // Initialisation au chargement de la page
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeCarousel();
+        <?php if ($atts['show_form']): ?>
+        initializeStars();
+        initializeForm();
+        initializeModal();
+        <?php endif; ?>
     });
     </script>
     <?php
@@ -716,149 +740,4 @@ function newsaiige_reviews_shortcode($atts) {
 }
 
 add_shortcode('newsaiige_reviews', 'newsaiige_reviews_shortcode');
-
-// Handler AJAX pour soumettre un avis
-function handle_submit_newsaiige_review() {
-    // Vérifier le nonce
-    if (!wp_verify_nonce($_POST['nonce'], 'newsaiige_review_nonce')) {
-        wp_send_json_error('Erreur de sécurité');
-        return;
-    }
-    
-    global $wpdb;
-    
-    // Récupérer les données
-    $customer_name = sanitize_text_field($_POST['customer_name']);
-    $customer_email = sanitize_email($_POST['customer_email'] ?? '');
-    $rating = intval($_POST['rating']);
-    $comment = sanitize_textarea_field($_POST['comment']);
-    
-    // Validation
-    if (empty($customer_name) || empty($comment) || $rating < 1 || $rating > 5) {
-        wp_send_json_error('Veuillez remplir tous les champs obligatoires');
-        return;
-    }
-    
-    // Insérer dans la base de données
-    $table_name = $wpdb->prefix . 'newsaiige_reviews';
-    
-    $result = $wpdb->insert(
-        $table_name,
-        array(
-            'customer_name' => $customer_name,
-            'customer_email' => $customer_email,
-            'rating' => $rating,
-            'comment' => $comment,
-            'status' => 'pending',
-            'created_at' => current_time('mysql')
-        ),
-        array('%s', '%s', '%d', '%s', '%s', '%s')
-    );
-    
-    if ($result === false) {
-        wp_send_json_error('Erreur lors de l\'enregistrement');
-    } else {
-        wp_send_json_success('Avis enregistré avec succès');
-    }
-}
-
-add_action('wp_ajax_submit_newsaiige_review', 'handle_submit_newsaiige_review');
-add_action('wp_ajax_nopriv_submit_newsaiige_review', 'handle_submit_newsaiige_review');
-
-// Handler AJAX pour récupérer les avis
-function handle_get_newsaiige_reviews() {
-    global $wpdb;
-    
-    $limit = isset($_GET['limit']) ? intval($_GET['limit']) : 10;
-    $table_name = $wpdb->prefix . 'newsaiige_reviews';
-    
-    // Vérifier si la table existe
-    if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") != $table_name) {
-        wp_send_json_error('Table des avis non trouvée');
-        return;
-    }
-    
-    // Récupérer les avis approuvés
-    $reviews = $wpdb->get_results($wpdb->prepare(
-        "SELECT customer_name, comment, rating, created_at 
-         FROM $table_name 
-         WHERE status = 'approved' 
-         ORDER BY created_at DESC 
-         LIMIT %d",
-        $limit
-    ));
-    
-    // Statistiques
-    $stats = $wpdb->get_row(
-        "SELECT 
-            COUNT(*) as total_reviews,
-            AVG(rating) as average_rating
-         FROM $table_name 
-         WHERE status = 'approved'"
-    );
-    
-    wp_send_json_success(array(
-        'reviews' => $reviews ? $reviews : array(),
-        'stats' => $stats ? $stats : (object)array('total_reviews' => 0, 'average_rating' => 5.0)
-    ));
-}
-
-add_action('wp_ajax_get_newsaiige_reviews', 'handle_get_newsaiige_reviews');
-add_action('wp_ajax_nopriv_get_newsaiige_reviews', 'handle_get_newsaiige_reviews');
-
-// Fonction d'activation du plugin
-function newsaiige_reviews_activate() {
-    global $wpdb;
-    
-    $table_name = $wpdb->prefix . 'newsaiige_reviews';
-    
-    $charset_collate = $wpdb->get_charset_collate();
-    
-    $sql = "CREATE TABLE $table_name (
-        id int(11) NOT NULL AUTO_INCREMENT,
-        customer_name varchar(255) NOT NULL,
-        customer_email varchar(255) DEFAULT '',
-        rating int(1) NOT NULL,
-        comment text NOT NULL,
-        status varchar(20) DEFAULT 'pending',
-        created_at datetime DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY (id),
-        KEY status_created (status, created_at),
-        KEY rating_idx (rating)
-    ) $charset_collate;";
-    
-    require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-    dbDelta($sql);
-    
-    // Insérer des données de test si la table est vide
-    $count = $wpdb->get_var("SELECT COUNT(*) FROM $table_name");
-    if ($count == 0) {
-        $test_reviews = array(
-            array('Marie L.', 'marie@example.com', 5, 'J\'ai récemment testé l\'huile corps nacrée de Newsaiige, et je dois dire que c\'est une belle découverte ! Sa texture légère et non grasse s\'applique facilement et laisse la peau douce, hydratée et délicatement parfumée.', 'approved'),
-            array('Sophie D.', 'sophie@example.com', 5, 'Produit exceptionnel ! Après plusieurs semaines d\'utilisation, ma peau est visiblement plus ferme et éclatante. L\'effet nacré est subtil et très élégant. Je recommande vivement !', 'approved'),
-            array('Amélie R.', 'amelie@example.com', 5, 'Une huile de qualité premium ! La texture est divine, l\'absorption rapide et le parfum délicat. Mes clientes adorent et moi aussi. Un incontournable pour mes soins.', 'approved'),
-            array('Camille B.', 'camille@example.com', 5, 'Enfin une huile qui tient ses promesses ! Ma peau n\'a jamais été aussi douce et lumineuse. L\'effet hydratant dure toute la journée. Un vrai coup de cœur !', 'approved'),
-            array('Laura M.', 'laura@example.com', 5, 'Je suis esthéticienne et j\'utilise cette huile dans mes soins. Les résultats sont bluffants ! Mes clientes me demandent constamment quel produit j\'utilise.', 'approved'),
-            array('Emma F.', 'emma@example.com', 5, 'Texture incroyable, parfum subtil et résultats visibles dès les premières applications. Cette huile a transformé ma routine beauté. Je ne peux plus m\'en passer !', 'approved')
-        );
-        
-        foreach ($test_reviews as $review) {
-            $wpdb->insert(
-                $table_name,
-                array(
-                    'customer_name' => $review[0],
-                    'customer_email' => $review[1],
-                    'rating' => $review[2],
-                    'comment' => $review[3],
-                    'status' => $review[4],
-                    'created_at' => current_time('mysql')
-                ),
-                array('%s', '%s', '%d', '%s', '%s', '%s')
-            );
-        }
-    }
-}
-
-register_activation_hook(__FILE__, 'newsaiige_reviews_activate');
 ?>
-
