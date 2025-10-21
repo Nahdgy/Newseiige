@@ -12,7 +12,7 @@ function newsaiige_services_grid_shortcode($atts) {
     .newsaiige-services-section {
         padding: 80px 20px;
         font-family: 'Montserrat', sans-serif;
-        background: #f8f9fa;
+        background: #fff;
         min-height: 100vh;
     }
 
