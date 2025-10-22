@@ -1,4 +1,4 @@
-function newsaiige_submit_grid_shortcode($atts) {
+function newsaiige_submit_grid_page_shortcode($atts) {
     $atts = shortcode_atts(array(
         'title' => 'Les Abonnements',
         'subtitle' => 'Un rendez-vous mensuel, une parenthèse d’exception pour votre corps et votre esprit 
@@ -19,6 +19,7 @@ Rejoins le Club NewSaiige !'
     .services-container {
         max-width: 1400px;
         margin: 0 auto;
+        font-family: 'Montserrat', sans-serif;
     }
 
     /* SECTION TITRE */
@@ -58,7 +59,7 @@ Rejoins le Club NewSaiige !'
         position: relative;
         transition: all 0.4s ease;
         cursor: pointer;
-        height: 450px;
+        height: 490px;
         text-decoration: none;
         color: inherit;
     }
@@ -83,7 +84,7 @@ Rejoins le Club NewSaiige !'
     }
 
     .service-image {
-        height: 60%;
+        height: 40%;
         background-size: cover;
         background-position: center;
         background-repeat: no-repeat;
@@ -91,8 +92,7 @@ Rejoins le Club NewSaiige !'
     }
 
     .service-info {
-        padding: 25px 20px;
-        height: 40%;
+        padding: 10px 20px;
         display: flex;
         flex-direction: column;
         justify-content: center;
@@ -100,9 +100,9 @@ Rejoins le Club NewSaiige !'
     }
 
     .service-name {
-        font-size: 1.6rem;
+        font-size: 1rem;
         font-weight: 700;
-        margin: 0 0 8px 0;
+        margin: 0 0 0 0;
         line-height: 1.3;
     }
 
@@ -114,7 +114,7 @@ Rejoins le Club NewSaiige !'
     }
 
     .service-description {
-        font-size: 0.75rem;
+        font-size: 1rem;
         font-weight: 400;
         line-height: 1.4;
         margin: 0;
@@ -125,34 +125,6 @@ Rejoins le Club NewSaiige !'
         font-weight: 700;
         line-height: 1.4;
         margin: 0;  
-    }
-
-    /* BOUTON DÉCOUVRIR */
-    .services-cta {
-        text-align: center;
-        margin-top: 60px;
-    }
-
-    .discover-button {
-        display: inline-block;
-        background: #000;
-        color: white;
-        padding: 15px 40px;
-        border-radius: 50px;
-        text-decoration: none;
-        font-weight: 600;
-        font-size: 1.1rem;
-        transition: all 0.3s ease;
-        border: none;
-        cursor: pointer;
-    }
-
-    .discover-button:hover {
-        background: #333;
-        transform: translateY(-2px);
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-        text-decoration: none;
-        color: white;
     }
 
     /* Responsive */
@@ -290,14 +262,13 @@ Rejoins le Club NewSaiige !'
                             <p class="service-duration-price">' . esc_html($service['duration_price']) . '</p>
                             <p class="service-description">' . esc_html($service['description']) . '</p>
                             <p class="service-sub-description"><em>' . esc_html($service['info']) . '</em></p>
+                            <p class="service-description"><em>Chaque mois, choisissez entre un soin <strong>CORPS ou VISAGE</strong>.</em></p>
+                            <p class="service-description"><em>Planning ouvert à l\'avance avec <strong>report possible du RDV</strong></em></p>
+                            <p class="service-description"><em>Prenez soin de vous <strong>pendant 12 mois.</strong></em></p>
                         </div>
                     </a>';
                 }
                 ?>
-            </div>
-
-            <div class="services-cta">
-                <a href="https://newsaiige.com/abonnement/" class="discover-button">Découvrir</a>
             </div>
         </div>
     </div>
@@ -350,5 +321,5 @@ Rejoins le Club NewSaiige !'
     return ob_get_clean();
 }
 
-add_shortcode('newsaiige_submit_grid', 'newsaiige_submit_grid_shortcode');
+add_shortcode('newsaiige_submit_grid_page', 'newsaiige_submit_grid_page_shortcode');
 ?>
