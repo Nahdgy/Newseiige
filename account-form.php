@@ -1,4 +1,3 @@
-<?php
 function newsaiige_account_form_shortcode($atts) {
     $atts = shortcode_atts(array(
         'title' => 'Mon Compte',
@@ -22,7 +21,6 @@ function newsaiige_account_form_shortcode($atts) {
         $last_name = sanitize_text_field($_POST['last_name']);
         $phone = sanitize_text_field($_POST['phone']);
         $email = sanitize_email($_POST['email']);
-        $current_password = $_POST['current_password'];
         $new_password = $_POST['new_password'];
         
         // Valider l'email
@@ -42,10 +40,11 @@ function newsaiige_account_form_shortcode($atts) {
                     'last_name' => $last_name
                 );
                 
-                // Si un nouveau mot de passe est fourni, vérifier l'ancien
+                // Si un nouveau mot de passe est fourni, l'ajouter
                 if (!empty($new_password)) {
-                    if (empty($current_password) || !wp_check_password($current_password, $current_user->user_pass, $user_id)) {
-                        $error_message = 'Mot de passe actuel incorrect.';
+                    // Valider la force du mot de passe (optionnel)
+                    if (strlen($new_password) < 8) {
+                        $error_message = 'Le mot de passe doit contenir au moins 8 caractères.';
                     } else {
                         $user_data['user_pass'] = $new_password;
                     }
@@ -61,6 +60,13 @@ function newsaiige_account_form_shortcode($atts) {
                         update_user_meta($user_id, 'phone', $phone);
                         
                         $success_message = 'Vos informations ont été mises à jour avec succès.';
+                        
+                        // Si le mot de passe a été changé, reconnexion automatique
+                        if (!empty($new_password)) {
+                            wp_set_current_user($user_id);
+                            wp_set_auth_cookie($user_id, true);
+                            $success_message .= ' Votre mot de passe a été modifié avec succès.';
+                        }
                         
                         // Rafraîchir les données utilisateur
                         $current_user = wp_get_current_user();
@@ -81,11 +87,9 @@ function newsaiige_account_form_shortcode($atts) {
 
     <style>
     .newsaiige-account-section {
-        max-width: 900px;
         margin: 0 auto;
         padding: 60px 20px;
         font-family: 'Montserrat', sans-serif;
-        background: #f8f9fa;
         border-radius: 20px;
         margin-top: 40px;
         margin-bottom: 40px;
@@ -95,35 +99,28 @@ function newsaiige_account_form_shortcode($atts) {
         text-align: left;
         margin-bottom: 50px;
         padding-bottom: 30px;
-        border-bottom: 2px solid rgba(130, 137, 127, 0.1);
     }
 
     .account-title {
-        font-size: 2.2rem;
-        font-weight: 400;
+        font-size: 24px;
+        font-weight: 700;
         color: #82897F;
         margin: 0 0 15px 0;
         letter-spacing: 1px;
     }
 
     .account-subtitle {
-        font-size: 1rem;
-        color: #666;
+        font-size: 16px;
+        color: #000;
         margin: 0;
         font-weight: 400;
         line-height: 1.5;
     }
 
-    .account-form-container {
-        background: white;
-        border-radius: 15px;
-        padding: 40px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-        border: 1px solid rgba(130, 137, 127, 0.1);
-    }
-
     .form-section {
-        margin-bottom: 40px;
+        margin-bottom: 100px;
+        padding-top: 40px;
+        border-top: 2px solid rgba(130, 137, 127, 0.1);
     }
 
     .form-section:last-child {
@@ -131,14 +128,17 @@ function newsaiige_account_form_shortcode($atts) {
     }
 
     .section-title {
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: #333;
+        font-size: 24px;
+        font-weight: 700;
+        color: #82897F;
         margin: 0 0 25px 0;
-        padding-bottom: 10px;
-        border-bottom: 1px solid #eee;
-        text-transform: uppercase;
         letter-spacing: 0.5px;
+    }
+    .section-description {
+        font-size: 16px;
+        color: #666; 
+        margin-bottom: 25px; 
+        
     }
 
     .form-row {
@@ -161,14 +161,11 @@ function newsaiige_account_form_shortcode($atts) {
     }
 
     .form-input {
-        width: 100%;
-        padding: 15px 20px;
-        border: 2px solid #e5e5e5;
-        border-radius: 50px;
+        border-radius: 30px !important;
         font-size: 1rem;
         font-family: 'Montserrat', sans-serif;
         background: #fff;
-        color: #333;
+        color: #7D7D7D;
         transition: all 0.3s ease;
         box-sizing: border-box;
     }
@@ -229,10 +226,26 @@ function newsaiige_account_form_shortcode($atts) {
         border-left: 4px solid #f44336;
     }
 
+    /* Clearfix uniquement pour les éléments flottants - pas sur les grids */
     .clearfix::after {
         content: "";
         display: table;
         clear: both;
+    }
+    
+    /* Empêcher tous les pseudo-éléments d'affecter les grids CSS */
+    .form-row::before,
+    .form-row::after,
+    .form-section::before, 
+    .form-section::after,
+    .account-form-container::before,
+    .account-form-container::after {
+        display: none !important;
+    }
+    
+    /* Alternative moderne au clearfix pour les grids */
+    .form-row {
+        display: grid !important;
     }
 
     /* Responsive */
@@ -298,7 +311,7 @@ function newsaiige_account_form_shortcode($atts) {
                 
                 <div class="form-section">
                     <h3 class="section-title">Informations personnelles</h3>
-                    <p style="color: #666; margin-bottom: 25px; font-size: 0.95rem;">Mettez vos informations personnelles à jour.</p>
+                    <p class="section-description">Mettez vos informations personnelles à jour.</p>
                     
                     <div class="form-row">
                         <div class="form-group">
@@ -322,28 +335,22 @@ function newsaiige_account_form_shortcode($atts) {
 
                 <div class="form-section">
                     <h3 class="section-title">Informations de connexion</h3>
-                    <p style="color: #666; margin-bottom: 25px; font-size: 0.95rem;">Mettez vos informations de connexion à jour.</p>
-                    
+                    <p class="section-description">Mettez vos informations de connexion à jour.</p>
                     <div class="form-row">
                         <div class="form-group">
                             <label for="email">E-mail</label>
                             <input type="email" id="email" name="email" class="form-input" 
-                                   value="<?php echo esc_attr($email); ?>" placeholder="newsaiige@gmail.com" required>
+                                value="<?php echo esc_attr($email); ?>" placeholder="newsaiige@gmail.com" required>
                         </div>
-                        <div class="form-group">
-                            <label for="current_password">Mot de passe actuel</label>
-                            <input type="password" id="current_password" name="current_password" class="form-input" 
-                                   placeholder="••••••••" autocomplete="current-password">
-                        </div>
-                    </div>
 
-                    <div class="form-group">
-                        <label for="new_password">Nouveau mot de passe (optionnel)</label>
-                        <input type="password" id="new_password" name="new_password" class="form-input" 
-                               placeholder="••••••••" autocomplete="new-password">
-                        <small style="color: #666; font-size: 0.85rem; margin-top: 5px; display: block;">
-                            Laissez vide si vous ne souhaitez pas changer votre mot de passe.
-                        </small>
+                        <div class="form-group">
+                            <label for="new_password">Nouveau mot de passe (optionnel)</label>
+                            <input type="password" id="new_password" name="new_password" class="form-input" 
+                                placeholder="••••••••" autocomplete="new-password" minlength="8">
+                            <small style="color: #666; font-size: 0.85rem; margin-top: 5px; display: block;">
+                                Laissez vide si vous ne souhaitez pas changer votre mot de passe. Minimum 8 caractères.
+                            </small>
+                        </div>
                     </div>
                 </div>
 
@@ -359,23 +366,39 @@ function newsaiige_account_form_shortcode($atts) {
         // Validation côté client
         const form = document.querySelector('form');
         const newPasswordInput = document.getElementById('new_password');
-        const currentPasswordInput = document.getElementById('current_password');
 
+        // Validation du mot de passe en temps réel
         newPasswordInput.addEventListener('input', function() {
-            if (this.value.length > 0) {
-                currentPasswordInput.required = true;
-                currentPasswordInput.style.borderColor = '#f44336';
+            const password = this.value;
+            const isValid = password.length === 0 || password.length >= 8;
+            
+            if (password.length > 0 && !isValid) {
+                this.style.borderColor = '#f44336';
+                if (!this.nextElementSibling || !this.nextElementSibling.classList.contains('password-error')) {
+                    const errorMsg = document.createElement('small');
+                    errorMsg.className = 'password-error';
+                    errorMsg.style.color = '#f44336';
+                    errorMsg.style.fontSize = '0.85rem';
+                    errorMsg.style.marginTop = '5px';
+                    errorMsg.style.display = 'block';
+                    errorMsg.textContent = 'Le mot de passe doit contenir au moins 8 caractères.';
+                    this.parentNode.insertBefore(errorMsg, this.nextElementSibling);
+                }
             } else {
-                currentPasswordInput.required = false;
-                currentPasswordInput.style.borderColor = '#e5e5e5';
+                this.style.borderColor = '';
+                const errorMsg = this.parentNode.querySelector('.password-error');
+                if (errorMsg) {
+                    errorMsg.remove();
+                }
             }
         });
 
         form.addEventListener('submit', function(e) {
-            if (newPasswordInput.value.length > 0 && currentPasswordInput.value.length === 0) {
+            const password = newPasswordInput.value;
+            if (password.length > 0 && password.length < 8) {
                 e.preventDefault();
-                alert('Veuillez entrer votre mot de passe actuel pour définir un nouveau mot de passe.');
-                currentPasswordInput.focus();
+                alert('Le mot de passe doit contenir au moins 8 caractères.');
+                newPasswordInput.focus();
             }
         });
 
