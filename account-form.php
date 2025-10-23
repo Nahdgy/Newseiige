@@ -98,7 +98,6 @@ function newsaiige_account_form_shortcode($atts) {
     .account-header {
         text-align: left;
         margin-bottom: 50px;
-        padding-bottom: 30px;
     }
 
     .account-title {
