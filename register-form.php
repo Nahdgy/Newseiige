@@ -23,17 +23,14 @@ function newsaiige_register_form_shortcode($atts) {
             $full_name = sanitize_text_field($_POST['full_name']);
             $email = sanitize_email($_POST['user_email']);
             $password = $_POST['user_password'];
-            $confirm_password = $_POST['confirm_password'];
             
             // Validation des champs
-            if (empty($full_name) || empty($email) || empty($password) || empty($confirm_password)) {
+            if (empty($full_name) || empty($email) || empty($password)) {
                 $register_error = 'Veuillez remplir tous les champs.';
             } elseif (!is_email($email)) {
                 $register_error = 'Adresse e-mail invalide.';
             } elseif (email_exists($email)) {
                 $register_error = 'Cette adresse e-mail est déjà utilisée.';
-            } elseif ($password !== $confirm_password) {
-                $register_error = 'Les mots de passe ne correspondent pas.';
             } elseif (strlen($password) < 6) {
                 $register_error = 'Le mot de passe doit contenir au moins 6 caractères.';
             } else {
@@ -82,12 +79,8 @@ function newsaiige_register_form_shortcode($atts) {
     
     <style>
     .newsaiige-auth-container {
-        max-width: 500px;
         margin: 0 auto;
-        padding: 60px 40px;
-        background: rgba(255, 255, 255, 0.95);
-        border-radius: 25px;
-        box-shadow: 0 30px 60px rgba(0, 0, 0, 0.1);
+        padding: 60px 40px 0px 40px;
         backdrop-filter: blur(10px);
         font-family: 'Montserrat', sans-serif;
         position: relative;
@@ -142,9 +135,9 @@ function newsaiige_register_form_shortcode($atts) {
 
     .newsaiige-form-input {
         width: 100%;
-        padding: 20px 25px;
+        padding: 20px 25px !important;
         border: 2px solid #e9ecef;
-        border-radius: 50px;
+        border-radius: 50px !important;
         font-family: 'Montserrat', sans-serif;
         font-size: 16px;
         transition: all 0.3s ease;
@@ -219,23 +212,18 @@ function newsaiige_register_form_shortcode($atts) {
     }
 
     .newsaiige-divider {
+        display: flex;
         text-align: center;
+        align-items: center;
         margin: 40px 0;
-        position: relative;
+        width: 100%;
+        justify-content: center;
+        gap: 30px;
     }
 
-    .newsaiige-divider::before {
-        content: '';
-        position: absolute;
-        top: 50%;
-        left: 0;
-        right: 0;
-        height: 1px;
-        background: #e9ecef;
-    }
-
-    .newsaiige-divider span {
+    .newsaiige-divider hr {
         background: rgba(255, 255, 255, 0.95);
+        width: 100%;
         padding: 0 20px;
         color: #666;
         font-weight: 500;
@@ -312,9 +300,6 @@ function newsaiige_register_form_shortcode($atts) {
     }
 
     .newsaiige-return-link {
-        position: absolute;
-        top: 20px;
-        right: 25px;
         color: #82897F;
         text-decoration: none;
         font-weight: 500;
@@ -323,6 +308,11 @@ function newsaiige_register_form_shortcode($atts) {
 
     .newsaiige-return-link:hover {
         color: #6d7569;
+    }
+    .newsaiige-auth-top{
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 30px;
     }
 
     /* Responsive */
@@ -365,12 +355,14 @@ function newsaiige_register_form_shortcode($atts) {
     </style>
 
     <div class="newsaiige-auth-container">
-        <a href="<?php echo esc_url(home_url()); ?>" class="newsaiige-return-link">
-            Retour à la boutique
-        </a>
+        <div class="newsaiige-auth-top">
+            <div class="newsaiige-auth-logo">NEWSAIIGE</div>
+            <a href="<?php echo esc_url(home_url()); ?>" class="newsaiige-return-link">
+                Retour à la boutique
+            </a>
+        </div>
         
         <div class="newsaiige-auth-header">
-            <div class="newsaiige-auth-logo">NEWSAIIGE</div>
             <h2 class="newsaiige-auth-title">S'INSCRIRE</h2>
             <p class="newsaiige-auth-subtitle">
                 Déjà membre ? <a href="<?php echo esc_url($atts['login_url']); ?>">Se connecter</a>
@@ -416,22 +408,13 @@ function newsaiige_register_form_shortcode($atts) {
                 <div class="newsaiige-password-strength" id="password-strength"></div>
             </div>
 
-            <div class="newsaiige-form-group">
-                <input type="password" 
-                       name="confirm_password" 
-                       id="confirm_password"
-                       class="newsaiige-form-input" 
-                       placeholder="Confirmer le mot de passe" 
-                       required>
-            </div>
-
             <button type="submit" name="newsaiige_register_submit" class="newsaiige-submit-btn" id="register-btn">
                 S'inscrire
             </button>
         </form>
 
         <div class="newsaiige-divider">
-            <span>OU</span>
+            <hr></hr>OU<hr></hr>
         </div>
 
         <div class="newsaiige-social-login">
@@ -473,7 +456,6 @@ function newsaiige_register_form_shortcode($atts) {
 
         // Validation en temps réel du mot de passe
         const passwordInput = document.getElementById('user_password');
-        const confirmPasswordInput = document.getElementById('confirm_password');
         const strengthIndicator = document.getElementById('password-strength');
         const registerBtn = document.getElementById('register-btn');
 
@@ -509,33 +491,16 @@ function newsaiige_register_form_shortcode($atts) {
             return strength >= 2;
         }
 
-        function validatePasswords() {
+        function validatePassword() {
             const password = passwordInput.value;
-            const confirmPassword = confirmPasswordInput.value;
-            
             const isPasswordStrong = checkPasswordStrength(password);
-            const passwordsMatch = password === confirmPassword && password.length > 0;
-            
-            if (confirmPassword.length > 0) {
-                if (passwordsMatch) {
-                    confirmPasswordInput.style.borderColor = '#28a745';
-                } else {
-                    confirmPasswordInput.style.borderColor = '#dc3545';
-                }
-            } else {
-                confirmPasswordInput.style.borderColor = '#e9ecef';
-            }
             
             // Activer/désactiver le bouton
-            registerBtn.disabled = !(isPasswordStrong && passwordsMatch && password.length >= 6);
+            registerBtn.disabled = !(isPasswordStrong && password.length >= 6);
         }
 
         if (passwordInput) {
-            passwordInput.addEventListener('input', validatePasswords);
-        }
-
-        if (confirmPasswordInput) {
-            confirmPasswordInput.addEventListener('input', validatePasswords);
+            passwordInput.addEventListener('input', validatePassword);
         }
 
         // Focus automatique sur le premier champ
