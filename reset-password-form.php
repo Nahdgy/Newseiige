@@ -115,12 +115,8 @@ function newsaiige_reset_password_form_shortcode($atts) {
     
     <style>
     .newsaiige-auth-container {
-        max-width: 500px;
         margin: 0 auto;
-        padding: 60px 40px;
-        background: rgba(255, 255, 255, 0.95);
-        border-radius: 25px;
-        box-shadow: 0 30px 60px rgba(0, 0, 0, 0.1);
+        padding: 60px 40px 0px 40px;
         backdrop-filter: blur(10px);
         font-family: 'Montserrat', sans-serif;
         position: relative;
@@ -170,9 +166,9 @@ function newsaiige_reset_password_form_shortcode($atts) {
 
     .newsaiige-form-input {
         width: 100%;
-        padding: 20px 25px;
+        padding: 20px 25px !important;
         border: 2px solid #e9ecef;
-        border-radius: 50px;
+        border-radius: 50px !important;
         font-family: 'Montserrat', sans-serif;
         font-size: 16px;
         transition: all 0.3s ease;
@@ -348,6 +344,11 @@ function newsaiige_reset_password_form_shortcode($atts) {
             padding: 18px;
             font-size: 16px;
         }
+        .newsaiige-auth-top{
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
     }
 
     @media (max-width: 480px) {
@@ -364,12 +365,14 @@ function newsaiige_reset_password_form_shortcode($atts) {
     </style>
 
     <div class="newsaiige-auth-container">
-        <a href="<?php echo esc_url(home_url()); ?>" class="newsaiige-return-link">
-            Retour à la boutique
-        </a>
+        <div class="newsaiige-auth-top">
+            <div class="newsaiige-auth-logo">NEWSAIIGE</div>
+            <a href="<?php echo esc_url(home_url()); ?>" class="newsaiige-return-link">
+                Retour à la boutique
+            </a>
+        </div>
         
         <div class="newsaiige-auth-header">
-            <div class="newsaiige-auth-logo">NEWSAIIGE</div>
             <h2 class="newsaiige-auth-title">
                 <?php echo $step === 'request' ? 'Réinitialiser le mot de passe' : 'Nouveau mot de passe'; ?>
             </h2>
