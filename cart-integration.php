@@ -5,6 +5,17 @@
 // S'assurer que les scripts sont chargés dans le bon ordre
 add_action('wp_enqueue_scripts', 'newsaiige_enqueue_cart_scripts');
 
+// Fonction utilitaire pour extraire le prix proprement
+function newsaiige_get_clean_price($woo_price_html) {
+    // Extraire juste le prix numérique et le symbole sans les balises
+    if (preg_match('/<bdi[^>]*>(.*?)<\/bdi>/', $woo_price_html, $matches)) {
+        // Décoder les entités HTML pour avoir le vrai symbole €
+        return html_entity_decode(strip_tags($matches[1]), ENT_QUOTES, 'UTF-8');
+    }
+    // Fallback : supprimer toutes les balises HTML et décoder les entités
+    return html_entity_decode(strip_tags($woo_price_html), ENT_QUOTES, 'UTF-8');
+}
+
 function newsaiige_enqueue_cart_scripts() {
     // Enqueue jQuery si pas déjà fait
     wp_enqueue_script('jquery');
@@ -34,7 +45,7 @@ function newsaiige_init_cart_counter() {
         
         // Mettre à jour les valeurs actuelles
         const currentCount = <?php echo WC()->cart->get_cart_contents_count(); ?>;
-        const currentTotal = '<?php echo WC()->cart->get_cart_total(); ?>';
+        const currentTotal = '<?php echo newsaiige_get_clean_price(WC()->cart->get_cart_total()); ?>';
         
         if (countBadge) {
             countBadge.textContent = currentCount;
@@ -46,6 +57,7 @@ function newsaiige_init_cart_counter() {
         }
         
         if (totalElement) {
+            // Utiliser textContent pour le prix nettoyé
             totalElement.textContent = currentTotal;
         }
     });
@@ -72,7 +84,7 @@ function newsaiige_cart_fragments($fragments) {
     
     // Fragment pour le total
     ob_start();
-    echo WC()->cart->get_cart_total();
+    echo newsaiige_get_clean_price(WC()->cart->get_cart_total());
     $fragments['#panier-total'] = ob_get_clean();
     
     // Fragment pour le contenu du mini panier
@@ -109,65 +121,5 @@ function newsaiige_get_cart_data() {
         'cart_empty' => WC()->cart->is_empty(),
         'cart_contents' => WC()->cart->get_cart()
     );
-}
-
-// Shortcut pour inclure le CSS du mini panier dans le header si nécessaire
-add_action('wp_head', 'newsaiige_mini_panier_inline_css');
-
-function newsaiige_mini_panier_inline_css() {
-    if (!is_admin()) {
-        ?>
-        <style>
-        /* Styles supplémentaires pour l'intégration du mini panier */
-        .drawer-content {
-            padding: 1rem;
-        }
-        
-        .drawer-content .mini-panier-container {
-            margin-bottom: 20px;
-        }
-        
-        /* Animation pour la mise à jour du badge */
-        #panier-count {
-            transition: all 0.3s ease;
-        }
-        
-        #panier-count.updated {
-            animation: badgePulse 0.6s ease;
-        }
-        
-        @keyframes badgePulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.2); }
-        }
-        
-        /* Styles pour les notifications */
-        .newsaiige-notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: #82897F;
-            color: white;
-            padding: 15px 20px;
-            border-radius: 10px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-            z-index: 10000;
-            transform: translateX(400px);
-            transition: transform 0.3s ease;
-            backdrop-filter: blur(10px);
-            font-family: 'Montserrat', sans-serif;
-            font-weight: 600;
-        }
-        
-        .newsaiige-notification.show {
-            transform: translateX(0);
-        }
-        
-        .newsaiige-notification.error {
-            background: #e74c3c;
-        }
-        </style>
-        <?php
-    }
 }
 ?>

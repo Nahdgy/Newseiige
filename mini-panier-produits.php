@@ -66,6 +66,15 @@ function mini_panier_produits_shortcode() {
         margin: 0;
     }
     
+    .mini-panier-price .woocommerce-Price-amount {
+        font-weight: 700;
+        color: #82897F;
+    }
+    
+    .mini-panier-price .woocommerce-Price-currencySymbol {
+        font-size: 12px;
+    }
+    
     .mini-panier-quantity {
         display: flex;
         align-items: center;
@@ -207,7 +216,6 @@ function mini_panier_produits_shortcode() {
                 
                 // Récupérer les informations du produit
                 $product_name = $product->get_name();
-                $product_price = WC()->cart->get_product_price($product);
                 $product_image = get_the_post_thumbnail_url($product_id, 'thumbnail');
                 
                 // Image par défaut si pas d'image
@@ -215,7 +223,7 @@ function mini_panier_produits_shortcode() {
                     $product_image = wc_placeholder_img_src('thumbnail');
                 }
                 
-                // Prix total pour cette ligne
+                // Prix total pour cette ligne (rendu HTML propre)
                 $line_total = WC()->cart->get_product_subtotal($product, $quantity);
                 ?>
                 <div class="mini-panier-item" data-cart-key="<?php echo esc_attr($cart_item_key); ?>" data-product-id="<?php echo esc_attr($product_id); ?>">
@@ -225,7 +233,7 @@ function mini_panier_produits_shortcode() {
                     
                     <div class="mini-panier-details">
                         <h4 class="mini-panier-title"><?php echo esc_html($product_name); ?></h4>
-                        <p class="mini-panier-price"><?php echo $line_total; ?></p>
+                        <p class="mini-panier-price"><?php echo wp_kses_post($line_total); ?></p>
                         
                         <div class="mini-panier-quantity">
                             <button class="qty-btn qty-decrease" data-cart-key="<?php echo esc_attr($cart_item_key); ?>" <?php echo ($quantity <= 1) ? 'disabled' : ''; ?>>-</button>
@@ -392,6 +400,7 @@ function mini_panier_produits_shortcode() {
             }
             
             if (totalElement) {
+                // Utiliser textContent pour le prix nettoyé
                 totalElement.textContent = total;
             }
         }
@@ -450,6 +459,7 @@ function mini_panier_produits_shortcode() {
                 }
                 
                 if (totalElement) {
+                    // Utiliser textContent pour le prix nettoyé
                     totalElement.textContent = data.data.cart_total;
                 }
                 
@@ -509,7 +519,7 @@ function handle_ajax_add_to_cart_mini() {
         wp_send_json_success(array(
             'message' => 'Produit ajouté au panier',
             'cart_count' => WC()->cart->get_cart_contents_count(),
-            'cart_total' => WC()->cart->get_cart_total()
+            'cart_total' => newsaiige_get_clean_price(WC()->cart->get_cart_total())
         ));
     } else {
         wp_send_json_error('Erreur lors de l\'ajout au panier');
@@ -539,7 +549,7 @@ function handle_ajax_update_cart_quantity() {
         wp_send_json_success(array(
             'message' => 'Quantité mise à jour',
             'cart_count' => WC()->cart->get_cart_contents_count(),
-            'cart_total' => WC()->cart->get_cart_total()
+            'cart_total' => newsaiige_get_clean_price(WC()->cart->get_cart_total())
         ));
     } else {
         wp_send_json_error('Erreur lors de la mise à jour de la quantité');
@@ -568,7 +578,7 @@ function handle_ajax_remove_from_cart() {
         wp_send_json_success(array(
             'message' => 'Produit supprimé du panier',
             'cart_count' => WC()->cart->get_cart_contents_count(),
-            'cart_total' => WC()->cart->get_cart_total()
+            'cart_total' => newsaiige_get_clean_price(WC()->cart->get_cart_total())
         ));
     } else {
         wp_send_json_error('Erreur lors de la suppression du produit');
@@ -595,7 +605,6 @@ function handle_ajax_get_mini_panier() {
             
             // Récupérer les informations du produit
             $product_name = $product->get_name();
-            $product_price = WC()->cart->get_product_price($product);
             $product_image = get_the_post_thumbnail_url($product_id, 'thumbnail');
             
             // Image par défaut si pas d'image
@@ -603,7 +612,7 @@ function handle_ajax_get_mini_panier() {
                 $product_image = wc_placeholder_img_src('thumbnail');
             }
             
-            // Prix total pour cette ligne
+            // Prix total pour cette ligne (rendu HTML propre)
             $line_total = WC()->cart->get_product_subtotal($product, $quantity);
             ?>
             <div class="mini-panier-item" data-cart-key="<?php echo esc_attr($cart_item_key); ?>" data-product-id="<?php echo esc_attr($product_id); ?>">
@@ -613,7 +622,7 @@ function handle_ajax_get_mini_panier() {
                 
                 <div class="mini-panier-details">
                     <h4 class="mini-panier-title"><?php echo esc_html($product_name); ?></h4>
-                    <p class="mini-panier-price"><?php echo $line_total; ?></p>
+                    <p class="mini-panier-price"><?php echo wp_kses_post($line_total); ?></p>
                     
                     <div class="mini-panier-quantity">
                         <button class="qty-btn qty-decrease" data-cart-key="<?php echo esc_attr($cart_item_key); ?>" <?php echo ($quantity <= 1) ? 'disabled' : ''; ?>>-</button>
@@ -642,7 +651,7 @@ function handle_ajax_get_mini_panier() {
     wp_send_json_success(array(
         'html' => $html,
         'cart_count' => WC()->cart->get_cart_contents_count(),
-        'cart_total' => WC()->cart->get_cart_total()
+        'cart_total' => newsaiige_get_clean_price(WC()->cart->get_cart_total())
     ));
 }
 ?>

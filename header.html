@@ -1033,6 +1033,68 @@ function header_personnalise_shortcode() {
     .elementor-popup-modal {
         z-index: 999999 !important;
     }
+
+	/* Styles supplémentaires pour l'intégration du mini panier */
+	.drawer-content {
+		padding: 1rem;
+	}
+	
+	.drawer-content .mini-panier-container {
+		margin-bottom: 20px;
+	}
+	
+	/* Animation pour la mise à jour du badge */
+	#panier-count {
+		transition: all 0.3s ease;
+	}
+	
+	#panier-count.updated {
+		animation: badgePulse 0.6s ease;
+	}
+	
+	@keyframes badgePulse {
+		0%, 100% { transform: scale(1); }
+		50% { transform: scale(1.2); }
+	}
+	
+	/* Styles pour les notifications */
+	.newsaiige-notification {
+		position: fixed;
+		top: 20px;
+		right: 20px;
+		background: #82897F;
+		color: white;
+		padding: 15px 20px;
+		border-radius: 10px;
+		box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+		z-index: 10000;
+		transform: translateX(400px);
+		transition: transform 0.3s ease;
+		backdrop-filter: blur(10px);
+		font-family: 'Montserrat', sans-serif;
+		font-weight: 600;
+	}
+	
+	.newsaiige-notification.show {
+		transform: translateX(0);
+	}
+	
+	.newsaiige-notification.error {
+		background: #e74c3c;
+	}
+
+	.mini-panier-price .woocommerce-Price-amount {
+    font-weight: 700;
+    color: #82897F;
+	}
+
+	.mini-panier-price .woocommerce-Price-currencySymbol {
+		font-size: 12px;
+	}
+
+	.mini-panier-price bdi {
+		font-style: normal;
+	}
   </style>
 
   <div class="header-custom">
