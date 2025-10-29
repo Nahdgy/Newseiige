@@ -821,17 +821,32 @@ function newsaiige_product_carroussel_shortcode($atts) {
                     e.stopPropagation();
                     
                     const productId = this.getAttribute('data-product-id');
-                    const isInCart = this.classList.contains('in-cart');
                     
-                    if (isInCart) {
-                        // Pour retirer du panier, on change juste l'affichage
-                        this.classList.remove('in-cart');
-                        this.innerHTML = '<img draggable="false" role="img" class="emoji" alt="🛒" src="http://newsaiige.com/wp-content/uploads/2025/10/panier_noir.png">';
-                        this.style.background = 'rgba(255, 255, 255, 0.9)';
-                        this.style.color = '#666';
+                    // Animation de clic
+                    this.style.transform = 'scale(0.9)';
+                    setTimeout(() => {
+                        this.style.transform = '';
+                    }, 150);
+                    
+                    // Vérifier si déjà ajouté au panier
+                    if (!this.classList.contains('in-cart')) {
+                        // Ajouter au panier via AJAX
+                        if (typeof window.addToWooCommerceCart === 'function') {
+                            window.addToWooCommerceCart(productId, 1, (data) => {
+                                // Marquer comme ajouté
+                                this.classList.add('in-cart');
+                                this.innerHTML = '✓';
+                                
+                                // Notification de succès
+                                showNotification('Produit ajouté au panier !', 'success');
+                            });
+                        } else {
+                            // Fallback - utiliser la fonction existante
+                            addToWooCommerceCart(productId, this);
+                        }
                     } else {
-                        // Ajouter au panier via WooCommerce
-                        addToWooCommerceCart(productId, this);
+                        // Déjà dans le panier, rediriger vers le panier
+                        window.location.href = '<?php echo wc_get_cart_url(); ?>';
                     }
                 });
             });
