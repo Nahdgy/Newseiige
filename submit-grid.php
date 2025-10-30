@@ -270,7 +270,7 @@ Rejoins le Club NewSaiige !'
                         'name' => '4 SOINS PAR MOIS',
                         'duration_price' => '205€ / mois',
                         'description' => 'Profite d’une réduction jusqu’à 900€/an',
-                        'info'=>'(1ère consultation)',
+                        'info'=>'(Valable 12 mois)',
                         'image' => 'http://newsaiige.com/wp-content/uploads/2025/10/maderotherapie.jpg',
                         'url' => 'https://newsaiige.com/product/soins/',
                         'alt' => 'Consultation en nutrition comportementale',
