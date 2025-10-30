@@ -297,7 +297,16 @@ Rejoins le Club NewSaiige !'
             </div>
 
             <div class="services-cta">
-                <a href="https://newsaiige.com/abonnement/" class="discover-button">Découvrir</a>
+                <?php 
+                // Simple vérification si l'URL contient "abonnement"
+                $current_url = $_SERVER['REQUEST_URI'] ?? '';
+                $is_abonnement_page = strpos($current_url, 'abonnement') !== false;
+                var_dump($is_abonnement_page);
+                
+                if (!$is_abonnement_page): 
+                ?>
+                    <a href="https://newsaiige.com/abonnement/" class="discover-button">Découvrir</a>
+                <?php endif; ?>
             </div>
         </div>
     </div>
