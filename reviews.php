@@ -1,3 +1,4 @@
+<?php
 function newsaiige_reviews_shortcode($atts) {
     $atts = shortcode_atts(array(
         'limit' => 10,
@@ -65,6 +66,7 @@ function newsaiige_reviews_shortcode($atts) {
         position: relative;
         overflow: hidden;
     }
+
     .reviews-header {
         text-align: center;
         margin-bottom: 60px;
@@ -121,6 +123,7 @@ function newsaiige_reviews_shortcode($atts) {
         display: flex;
         transition: transform 0.5s ease;
         gap: 30px;
+        width: 100%;
     }
 
     .review-card {
@@ -136,6 +139,7 @@ function newsaiige_reviews_shortcode($atts) {
         position: relative;
         transition: all 0.3s ease;
         flex-shrink: 0;
+        box-sizing: border-box;
     }
 
     .review-text {
@@ -341,7 +345,7 @@ function newsaiige_reviews_shortcode($atts) {
         box-shadow: 0 10px 25px rgba(130, 137, 127, 0.3);
     }
 
-    /* Responsive */
+    /* Responsive Mobile Optimisé */
     @media (max-width: 768px) {
         .reviews-title {
             font-size: 2rem;
@@ -351,34 +355,39 @@ function newsaiige_reviews_shortcode($atts) {
             font-size: 2.5rem;
         }
         
+        .carousel-container {
+            padding: 0 20px;
+        }
+
+        .carousel-track {
+            gap: 0;
+        }
+        
         .review-card {
-            width: 100% !important;
-            min-width: 280px !important;
-            max-width: 350px !important;
+            width: 100%;
+            min-width: 100%;
+            max-width: 100%;
             padding: 30px 20px;
-            margin: 0 auto;
+            margin: 0;
+            flex-shrink: 0;
         }
         
         .modal-content {
             padding: 40px 30px;
         }
-        
-        .carousel-track {
-            gap: 20px !important;
-            justify-content: center;
-        }
-
-        .carousel-container {
-            padding: 0 20px;
-        }
     }
 
     @media (max-width: 480px) {
+        .carousel-container {
+            padding: 0 15px;
+        }
+
         .review-card {
-            width: 100% !important;
-            min-width: 260px !important;
-            max-width: 320px !important;
+            width: 100%;
+            min-width: 100%;
+            max-width: 100%;
             padding: 25px 15px;
+            margin: 0;
         }
         
         .modal-content {
@@ -387,14 +396,6 @@ function newsaiige_reviews_shortcode($atts) {
         
         .reviews-title {
             font-size: 1.8rem;
-        }
-        
-        .carousel-track {
-            gap: 15px !important;
-        }
-
-        .carousel-container {
-            padding: 0 15px;
         }
 
         .newsaiige-reviews {
@@ -501,100 +502,109 @@ function newsaiige_reviews_shortcode($atts) {
         const currentSlideSpan = document.getElementById('currentSlide');
         const totalSlidesSpan = document.getElementById('totalSlides');
 
-        // Calculate visible cards based on screen width
+        // Fonction pour déterminer le nombre de cartes visibles
         function getVisibleCards() {
-            if (window.innerWidth <= 480) return 1;
-            if (window.innerWidth <= 768) return 1;
-            if (window.innerWidth <= 1200) return 2;
-            return 3;
+            if (window.innerWidth <= 768) return 1; // Mobile : 1 carte
+            if (window.innerWidth <= 1200) return 2; // Tablette : 2 cartes
+            return 3; // Desktop : 3 cartes
         }
 
         function updateCarousel() {
-            const containerWidth = track.parentElement.offsetWidth;
             const visibleCards = getVisibleCards();
-            const currentGroup = Math.floor(currentIndex / visibleCards);
+            const isMobile = visibleCards === 1;
             
-            // Calcul de la largeur optimale pour les cartes
-            const gapBetweenCards = window.innerWidth <= 480 ? 20 : 30;
-            
-            let cardWidth;
-            if (visibleCards === 1) {
-                // Sur mobile : une seule carte centrée, largeur optimale
-                cardWidth = Math.min(containerWidth - 40, 350); // 40px de padding total
-            } else if (visibleCards === 2) {
-                // Sur tablette : 2 cartes
-                cardWidth = Math.min((containerWidth - 40 - gapBetweenCards) / 2, 380);
+            if (isMobile) {
+                // Mode mobile : 1 carte à la fois, 100% de largeur
+                const containerWidth = track.parentElement.offsetWidth;
+                const cardWidth = containerWidth;
+                
+                // Définir la largeur des cartes
+                cards.forEach(card => {
+                    card.style.width = `${cardWidth}px`;
+                    card.style.minWidth = `${cardWidth}px`;
+                    card.style.maxWidth = `${cardWidth}px`;
+                });
+                
+                // Déplacement : chaque carte prend 100% de la largeur
+                const translateX = -currentIndex * cardWidth;
+                track.style.transform = `translateX(${translateX}px)`;
+                
+                // Pagination
+                if (currentSlideSpan) currentSlideSpan.textContent = currentIndex + 1;
+                if (totalSlidesSpan) totalSlidesSpan.textContent = totalSlides;
+                
+                // Boutons
+                if (prevBtn) prevBtn.disabled = currentIndex === 0;
+                if (nextBtn) nextBtn.disabled = currentIndex >= totalSlides - 1;
+                
             } else {
-                // Sur desktop : 3 cartes
-                cardWidth = Math.min((containerWidth - 40 - (2 * gapBetweenCards)) / 3, 380);
+                // Mode desktop/tablette : logique par groupes
+                const totalGroups = Math.ceil(totalSlides / visibleCards);
+                const currentGroup = Math.floor(currentIndex / visibleCards);
+                
+                const containerWidth = track.parentElement.offsetWidth;
+                const gapBetweenCards = 30;
+                const cardWidth = (containerWidth - (visibleCards - 1) * gapBetweenCards) / visibleCards;
+                
+                // Définir la largeur des cartes
+                cards.forEach(card => {
+                    card.style.width = `${cardWidth}px`;
+                    card.style.minWidth = `${cardWidth}px`;
+                    card.style.maxWidth = `${cardWidth}px`;
+                });
+                
+                // Déplacement par groupe
+                const translateX = -currentGroup * (cardWidth + gapBetweenCards) * visibleCards;
+                track.style.transform = `translateX(${translateX}px)`;
+                
+                // Pagination
+                if (currentSlideSpan) currentSlideSpan.textContent = currentGroup + 1;
+                if (totalSlidesSpan) totalSlidesSpan.textContent = totalGroups;
+                
+                // Boutons
+                if (prevBtn) prevBtn.disabled = currentGroup === 0;
+                if (nextBtn) nextBtn.disabled = currentGroup >= totalGroups - 1;
             }
-            
-            // Assurer une largeur minimale
-            cardWidth = Math.max(cardWidth, 280);
-            
-            // Appliquer la largeur aux cartes
-            cards.forEach(card => {
-                card.style.width = `${cardWidth}px`;
-                card.style.flexShrink = '0';
-            });
-            
-            // Calcul du décalage pour centrer
-            let offset;
-            if (visibleCards === 1) {
-                // Pour une seule carte : centrer parfaitement
-                const cardPosition = currentIndex * (cardWidth + gapBetweenCards);
-                offset = (containerWidth - cardWidth) / 2 - cardPosition;
-            } else {
-                // Pour plusieurs cartes : centrer le groupe
-                const groupWidth = (cardWidth * visibleCards) + ((visibleCards - 1) * gapBetweenCards);
-                const groupOffset = (containerWidth - groupWidth) / 2;
-                const startCardIndex = currentGroup * visibleCards;
-                const cardsOffset = startCardIndex * (cardWidth + gapBetweenCards);
-                offset = groupOffset - cardsOffset;
-            }
-            
-            track.style.transform = `translateX(${offset}px)`;
-            
-            // Update pagination
-            const totalGroups = Math.ceil(totalSlides / visibleCards);
-            if (currentSlideSpan) currentSlideSpan.textContent = currentGroup + 1;
-            if (totalSlidesSpan) totalSlidesSpan.textContent = totalGroups;
-            
-            // Update button states
-            if (prevBtn) prevBtn.disabled = currentGroup === 0;
-            if (nextBtn) nextBtn.disabled = currentGroup >= totalGroups - 1;
         }
 
         function nextSlide() {
             const visibleCards = getVisibleCards();
-            const totalGroups = Math.ceil(totalSlides / visibleCards);
-            const currentGroup = Math.floor(currentIndex / visibleCards);
             
-            if (currentGroup < totalGroups - 1) {
-                if (visibleCards === 1) {
-                    // Mode une carte : avancer d'une carte
-                    currentIndex = Math.min(currentIndex + 1, totalSlides - 1);
-                } else {
-                    // Mode plusieurs cartes : avancer d'un groupe
-                    currentIndex = (currentGroup + 1) * visibleCards;
+            if (visibleCards === 1) {
+                // Mode mobile : avancer d'une carte
+                if (currentIndex < totalSlides - 1) {
+                    currentIndex++;
+                    updateCarousel();
                 }
-                updateCarousel();
+            } else {
+                // Mode desktop : avancer d'un groupe
+                const totalGroups = Math.ceil(totalSlides / visibleCards);
+                const currentGroup = Math.floor(currentIndex / visibleCards);
+                
+                if (currentGroup < totalGroups - 1) {
+                    currentIndex = (currentGroup + 1) * visibleCards;
+                    updateCarousel();
+                }
             }
         }
 
         function prevSlide() {
             const visibleCards = getVisibleCards();
-            const currentGroup = Math.floor(currentIndex / visibleCards);
             
-            if (currentGroup > 0 || currentIndex > 0) {
-                if (visibleCards === 1) {
-                    // Mode une carte : reculer d'une carte
-                    currentIndex = Math.max(currentIndex - 1, 0);
-                } else {
-                    // Mode plusieurs cartes : reculer d'un groupe
-                    currentIndex = (currentGroup - 1) * visibleCards;
+            if (visibleCards === 1) {
+                // Mode mobile : reculer d'une carte
+                if (currentIndex > 0) {
+                    currentIndex--;
+                    updateCarousel();
                 }
-                updateCarousel();
+            } else {
+                // Mode desktop : reculer d'un groupe
+                const currentGroup = Math.floor(currentIndex / visibleCards);
+                
+                if (currentGroup > 0) {
+                    currentIndex = (currentGroup - 1) * visibleCards;
+                    updateCarousel();
+                }
             }
         }
 
@@ -602,33 +612,93 @@ function newsaiige_reviews_shortcode($atts) {
         if (nextBtn) nextBtn.addEventListener('click', nextSlide);
         if (prevBtn) prevBtn.addEventListener('click', prevSlide);
 
-        // Auto-scroll every 5 seconds
-        setInterval(() => {
-            const visibleCards = getVisibleCards();
+        // Support tactile pour mobile
+        let startX = 0;
+        let endX = 0;
+        let isDragging = false;
+
+        track.addEventListener('touchstart', function(e) {
+            startX = e.touches[0].clientX;
+            isDragging = true;
+        });
+
+        track.addEventListener('touchmove', function(e) {
+            if (!isDragging) return;
+            e.preventDefault();
+        });
+
+        track.addEventListener('touchend', function(e) {
+            if (!isDragging) return;
             
-            if (visibleCards === 1) {
-                // Mode une carte : avancer d'une carte, retour au début si à la fin
-                if (currentIndex >= totalSlides - 1) {
-                    currentIndex = 0;
+            endX = e.changedTouches[0].clientX;
+            const diffX = startX - endX;
+            
+            // Seuil de 50px pour déclencher le swipe
+            if (Math.abs(diffX) > 50) {
+                if (diffX > 0) {
+                    nextSlide(); // Swipe vers la gauche
                 } else {
-                    currentIndex++;
-                }
-            } else {
-                // Mode plusieurs cartes : avancer d'un groupe
-                const totalGroups = Math.ceil(totalSlides / visibleCards);
-                const currentGroup = Math.floor(currentIndex / visibleCards);
-                
-                if (currentGroup >= totalGroups - 1) {
-                    currentIndex = 0;
-                } else {
-                    currentIndex = (currentGroup + 1) * visibleCards;
+                    prevSlide(); // Swipe vers la droite
                 }
             }
-            updateCarousel();
-        }, 5000);
+            
+            isDragging = false;
+        });
+
+        // Auto-scroll (désactivé pour une meilleure UX mobile)
+        let autoScrollInterval;
+        
+        function startAutoScroll() {
+            autoScrollInterval = setInterval(() => {
+                const visibleCards = getVisibleCards();
+                
+                if (visibleCards === 1) {
+                    // Mode mobile : avancer d'une carte, retour au début si à la fin
+                    if (currentIndex >= totalSlides - 1) {
+                        currentIndex = 0;
+                    } else {
+                        currentIndex++;
+                    }
+                } else {
+                    // Mode desktop : avancer d'un groupe
+                    const totalGroups = Math.ceil(totalSlides / visibleCards);
+                    const currentGroup = Math.floor(currentIndex / visibleCards);
+                    
+                    if (currentGroup >= totalGroups - 1) {
+                        currentIndex = 0;
+                    } else {
+                        currentIndex = (currentGroup + 1) * visibleCards;
+                    }
+                }
+                updateCarousel();
+            }, 5000);
+        }
+
+        function stopAutoScroll() {
+            if (autoScrollInterval) {
+                clearInterval(autoScrollInterval);
+            }
+        }
+
+        // Arrêter l'auto-scroll sur interaction mobile
+        if (window.innerWidth <= 768) {
+            track.addEventListener('touchstart', stopAutoScroll);
+        } else {
+            startAutoScroll();
+        }
 
         // Update on window resize
-        window.addEventListener('resize', updateCarousel);
+        window.addEventListener('resize', function() {
+            // Réinitialiser l'index pour éviter les problèmes
+            currentIndex = 0;
+            updateCarousel();
+            
+            // Redémarrer l'auto-scroll si nécessaire
+            stopAutoScroll();
+            if (window.innerWidth > 768) {
+                startAutoScroll();
+            }
+        });
 
         // Initialize
         updateCarousel();
