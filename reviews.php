@@ -138,14 +138,6 @@ function newsaiige_reviews_shortcode($atts) {
         flex-shrink: 0;
     }
 
-    .review-card:hover {
-        transform: translateY(-10px) scale(1.02);
-        box-shadow: 
-            0 30px 60px rgba(0, 0, 0, 0.15),
-            0 15px 30px rgba(0, 0, 0, 0.1),
-            inset 0 1px 0 rgba(255, 255, 255, 0.4);
-    }
-
     .review-text {
         font-size: 1.1rem;
         line-height: 1.6;
@@ -360,10 +352,11 @@ function newsaiige_reviews_shortcode($atts) {
         }
         
         .review-card {
-            width: calc(100% - 40px) !important;
-            min-width: 280px;
-            max-width: 400px;
+            width: 100% !important;
+            min-width: 280px !important;
+            max-width: 350px !important;
             padding: 30px 20px;
+            margin: 0 auto;
         }
         
         .modal-content {
@@ -371,16 +364,21 @@ function newsaiige_reviews_shortcode($atts) {
         }
         
         .carousel-track {
-            gap: 20px;
+            gap: 20px !important;
             justify-content: center;
+        }
+
+        .carousel-container {
+            padding: 0 20px;
         }
     }
 
     @media (max-width: 480px) {
         .review-card {
-            width: calc(100% - 20px) !important;
-            min-width: 260px;
-            max-width: 350px;
+            width: 100% !important;
+            min-width: 260px !important;
+            max-width: 320px !important;
+            padding: 25px 15px;
         }
         
         .modal-content {
@@ -392,7 +390,15 @@ function newsaiige_reviews_shortcode($atts) {
         }
         
         .carousel-track {
-            gap: 15px;
+            gap: 15px !important;
+        }
+
+        .carousel-container {
+            padding: 0 15px;
+        }
+
+        .newsaiige-reviews {
+            padding: 60px 15px;
         }
     }
     </style>
@@ -505,24 +511,26 @@ function newsaiige_reviews_shortcode($atts) {
 
         function updateCarousel() {
             const containerWidth = track.parentElement.offsetWidth;
-            const cardsPerGroup = window.innerWidth <= 768 ? 1 : 3; // 1 carte sur mobile, 3 sur desktop
-            const currentGroup = Math.floor(currentIndex / cardsPerGroup);
+            const visibleCards = getVisibleCards();
+            const currentGroup = Math.floor(currentIndex / visibleCards);
             
             // Calcul de la largeur optimale pour les cartes
-            const gapBetweenCards = window.innerWidth <= 480 ? 15 : 30;
-            const totalGaps = Math.max(0, (cardsPerGroup - 1) * gapBetweenCards);
-            const containerPadding = 40; // padding des côtés
-            const availableWidth = Math.min(containerWidth - containerPadding, 1200);
+            const gapBetweenCards = window.innerWidth <= 480 ? 20 : 30;
             
             let cardWidth;
-            if (cardsPerGroup === 1) {
-                // Sur mobile : largeur maximale avec marges
-                cardWidth = Math.min(availableWidth, 400);
+            if (visibleCards === 1) {
+                // Sur mobile : une seule carte centrée, largeur optimale
+                cardWidth = Math.min(containerWidth - 40, 350); // 40px de padding total
+            } else if (visibleCards === 2) {
+                // Sur tablette : 2 cartes
+                cardWidth = Math.min((containerWidth - 40 - gapBetweenCards) / 2, 380);
             } else {
-                // Sur desktop : largeur calculée pour 3 cartes
-                cardWidth = (availableWidth - totalGaps) / cardsPerGroup;
-                cardWidth = Math.max(280, Math.min(cardWidth, 380)); // Min 280px, Max 380px
+                // Sur desktop : 3 cartes
+                cardWidth = Math.min((containerWidth - 40 - (2 * gapBetweenCards)) / 3, 380);
             }
+            
+            // Assurer une largeur minimale
+            cardWidth = Math.max(cardWidth, 280);
             
             // Appliquer la largeur aux cartes
             cards.forEach(card => {
@@ -530,25 +538,25 @@ function newsaiige_reviews_shortcode($atts) {
                 card.style.flexShrink = '0';
             });
             
-            // Centrage du groupe de cartes
-            let groupWidth, offset;
-            if (cardsPerGroup === 1) {
-                // Centrer la carte unique
-                offset = (containerWidth - cardWidth) / 2;
-                const startCardIndex = currentGroup * cardsPerGroup;
-                offset = offset - (startCardIndex * (cardWidth + gapBetweenCards));
+            // Calcul du décalage pour centrer
+            let offset;
+            if (visibleCards === 1) {
+                // Pour une seule carte : centrer parfaitement
+                const cardPosition = currentIndex * (cardWidth + gapBetweenCards);
+                offset = (containerWidth - cardWidth) / 2 - cardPosition;
             } else {
-                // Centrer le groupe de 3 cartes
-                groupWidth = (cardWidth * cardsPerGroup) + totalGaps;
-                const startOffset = (containerWidth - groupWidth) / 2;
-                const startCardIndex = currentGroup * cardsPerGroup;
-                offset = startOffset - (startCardIndex * (cardWidth + gapBetweenCards));
+                // Pour plusieurs cartes : centrer le groupe
+                const groupWidth = (cardWidth * visibleCards) + ((visibleCards - 1) * gapBetweenCards);
+                const groupOffset = (containerWidth - groupWidth) / 2;
+                const startCardIndex = currentGroup * visibleCards;
+                const cardsOffset = startCardIndex * (cardWidth + gapBetweenCards);
+                offset = groupOffset - cardsOffset;
             }
             
             track.style.transform = `translateX(${offset}px)`;
             
             // Update pagination
-            const totalGroups = Math.ceil(totalSlides / cardsPerGroup);
+            const totalGroups = Math.ceil(totalSlides / visibleCards);
             if (currentSlideSpan) currentSlideSpan.textContent = currentGroup + 1;
             if (totalSlidesSpan) totalSlidesSpan.textContent = totalGroups;
             
@@ -558,22 +566,34 @@ function newsaiige_reviews_shortcode($atts) {
         }
 
         function nextSlide() {
-            const cardsPerGroup = window.innerWidth <= 768 ? 1 : 3;
-            const totalGroups = Math.ceil(totalSlides / cardsPerGroup);
-            const currentGroup = Math.floor(currentIndex / cardsPerGroup);
+            const visibleCards = getVisibleCards();
+            const totalGroups = Math.ceil(totalSlides / visibleCards);
+            const currentGroup = Math.floor(currentIndex / visibleCards);
             
             if (currentGroup < totalGroups - 1) {
-                currentIndex = (currentGroup + 1) * cardsPerGroup;
+                if (visibleCards === 1) {
+                    // Mode une carte : avancer d'une carte
+                    currentIndex = Math.min(currentIndex + 1, totalSlides - 1);
+                } else {
+                    // Mode plusieurs cartes : avancer d'un groupe
+                    currentIndex = (currentGroup + 1) * visibleCards;
+                }
                 updateCarousel();
             }
         }
 
         function prevSlide() {
-            const cardsPerGroup = window.innerWidth <= 768 ? 1 : 3;
-            const currentGroup = Math.floor(currentIndex / cardsPerGroup);
+            const visibleCards = getVisibleCards();
+            const currentGroup = Math.floor(currentIndex / visibleCards);
             
-            if (currentGroup > 0) {
-                currentIndex = (currentGroup - 1) * cardsPerGroup;
+            if (currentGroup > 0 || currentIndex > 0) {
+                if (visibleCards === 1) {
+                    // Mode une carte : reculer d'une carte
+                    currentIndex = Math.max(currentIndex - 1, 0);
+                } else {
+                    // Mode plusieurs cartes : reculer d'un groupe
+                    currentIndex = (currentGroup - 1) * visibleCards;
+                }
                 updateCarousel();
             }
         }
@@ -584,14 +604,25 @@ function newsaiige_reviews_shortcode($atts) {
 
         // Auto-scroll every 5 seconds
         setInterval(() => {
-            const cardsPerGroup = window.innerWidth <= 768 ? 1 : 3;
-            const totalGroups = Math.ceil(totalSlides / cardsPerGroup);
-            const currentGroup = Math.floor(currentIndex / cardsPerGroup);
+            const visibleCards = getVisibleCards();
             
-            if (currentGroup >= totalGroups - 1) {
-                currentIndex = 0;
+            if (visibleCards === 1) {
+                // Mode une carte : avancer d'une carte, retour au début si à la fin
+                if (currentIndex >= totalSlides - 1) {
+                    currentIndex = 0;
+                } else {
+                    currentIndex++;
+                }
             } else {
-                currentIndex = (currentGroup + 1) * cardsPerGroup;
+                // Mode plusieurs cartes : avancer d'un groupe
+                const totalGroups = Math.ceil(totalSlides / visibleCards);
+                const currentGroup = Math.floor(currentIndex / visibleCards);
+                
+                if (currentGroup >= totalGroups - 1) {
+                    currentIndex = 0;
+                } else {
+                    currentIndex = (currentGroup + 1) * visibleCards;
+                }
             }
             updateCarousel();
         }, 5000);
@@ -735,8 +766,9 @@ function newsaiige_reviews_shortcode($atts) {
         <?php endif; ?>
     });
     </script>
+    
     <?php
-        return ob_get_clean();
+    return ob_get_clean();
 }
 
 add_shortcode('newsaiige_reviews', 'newsaiige_reviews_shortcode');

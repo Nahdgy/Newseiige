@@ -1,4 +1,3 @@
-<?php
 function newsaiige_product_carroussel_shortcode($atts) {
     $atts = shortcode_atts(array(
         'limit' => 12,
@@ -33,7 +32,6 @@ function newsaiige_product_carroussel_shortcode($atts) {
         position: sticky;
         top: 120px;
         height: fit-content;
-        z-index: 10;
     }
 
     .sidebar-title {
@@ -107,14 +105,13 @@ function newsaiige_product_carroussel_shortcode($atts) {
         line-height: 1.6;
     }
 
-    /* CARROUSEL PRODUITS - Nouveau système sans overflow */
+    /* CARROUSEL PRODUITS */
     .products-carousel-container {
         position: relative;
         margin-top: 30px;
         width: 100%;
         overflow: hidden;
         max-width: 100%;
-        z-index: 1;
     }
 
     .products-grid {
@@ -122,7 +119,6 @@ function newsaiige_product_carroussel_shortcode($atts) {
         width: 100%;
         height: auto;
         overflow: hidden;
-        box-sizing: border-box;
     }
 
     .carousel-page {
@@ -130,6 +126,7 @@ function newsaiige_product_carroussel_shortcode($atts) {
         top: 0;
         left: 0;
         width: 100%;
+        height: 100%;
         display: grid;
         grid-template-columns: repeat(3, 1fr);
         gap: 30px;
@@ -138,8 +135,6 @@ function newsaiige_product_carroussel_shortcode($atts) {
         transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
         pointer-events: none;
         box-sizing: border-box;
-        padding: 0;
-        margin: 0;
     }
 
     .carousel-page.active {
@@ -186,8 +181,6 @@ function newsaiige_product_carroussel_shortcode($atts) {
         align-items: center;
         gap: 30px;
         margin-top: 40px;
-        z-index: 5;
-        position: relative;
     }
 
     .carousel-arrow {
@@ -570,6 +563,9 @@ function newsaiige_product_carroussel_shortcode($atts) {
                             $products_per_page = 3;
                             $product_pages = array_chunk($all_products, $products_per_page);
                             $total_pages = count($product_pages);
+                            
+                            // Calculer la hauteur nécessaire pour toutes les pages
+                            $max_height = 0;
                             
                             foreach ($product_pages as $page_index => $page_products) {
                                 $is_active = $page_index === 0 ? 'active' : '';
@@ -1027,4 +1023,3 @@ function handle_ajax_add_to_cart_carroussel() {
         wp_send_json_error('Erreur lors de l\'ajout au panier');
     }
 }
-?>
