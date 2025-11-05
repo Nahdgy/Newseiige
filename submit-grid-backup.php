@@ -1,8 +1,8 @@
-<?php
 function newsaiige_submit_grid_shortcode($atts) {
     $atts = shortcode_atts(array(
         'title' => 'Les Abonnements',
-        'subtitle' => 'Un rendez-vous mensuel, une parenthèse d\'exception pour votre corps et votre esprit. Rejoins le Club NewSaiige !'
+        'subtitle' => 'Un rendez-vous mensuel, une parenthèse d’exception pour votre corps et votre esprit 
+Rejoins le Club NewSaiige !'
     ), $atts);
     
     ob_start();
@@ -333,7 +333,7 @@ function newsaiige_submit_grid_shortcode($atts) {
                     array(
                         'name' => '1 SOIN PAR MOIS',
                         'duration_price' => '59€ / mois',
-                        'description' => 'Profitez d\'une réduction jusqu\'à 132€/an',
+                        'description' => 'Profitez d’une réduction jusqu’à 132€/an',
                         'info'=>'(Valable 12 mois)',
                         'image' => 'http://newsaiige.com/wp-content/uploads/2025/10/banderole_soins.jpg',
                         'url' => 'https://newsaiige.com/product/soins/',
@@ -343,7 +343,7 @@ function newsaiige_submit_grid_shortcode($atts) {
                     array(
                         'name' => '2 SOINS PAR MOIS',
                         'duration_price' => '109€ / mois',
-                        'description' => 'Profitez d\'une réduction jusqu\'à 372€/an',
+                        'description' => 'Profitez d’une réduction jusqu’à 372€/an',
                         'info'=>'(Valable 12 mois)',
                         'image' => 'http://newsaiige.com/wp-content/uploads/2025/10/maderotherapie.jpg',
                         'url' => 'https://newsaiige.com/product/soins/',
@@ -353,7 +353,7 @@ function newsaiige_submit_grid_shortcode($atts) {
                     array(
                         'name' => '3 SOINS PAR MOIS',
                         'duration_price' => '159€ / mois',
-                        'description' => 'Profitez d\'une réduction jusqu\'à 612€/an',
+                        'description' => 'Profitez d’une réduction jusqu’à 612€/an',
                         'info'=>'(Valable 12 mois)',
                         'image' => 'http://newsaiige.com/wp-content/uploads/2025/10/650ce0d8a825e72901a8e88dec62aa6eb67bb878.jpg',
                         'url' => 'https://newsaiige.com/product/soins/',
@@ -363,7 +363,7 @@ function newsaiige_submit_grid_shortcode($atts) {
                     array(
                         'name' => '4 SOINS PAR MOIS',
                         'duration_price' => '205€ / mois',
-                        'description' => 'Profite d\'une réduction jusqu\'à 900€/an',
+                        'description' => 'Profite d’une réduction jusqu’à 900€/an',
                         'info'=>'(Valable 12 mois)',
                         'image' => 'http://newsaiige.com/wp-content/uploads/2025/10/maderotherapie.jpg',
                         'url' => 'https://newsaiige.com/product/soins/',
@@ -395,6 +395,7 @@ function newsaiige_submit_grid_shortcode($atts) {
                 // Simple vérification si l'URL contient "abonnement"
                 $current_url = $_SERVER['REQUEST_URI'] ?? '';
                 $is_abonnement_page = strpos($current_url, 'abonnement') !== false;
+                var_dump($is_abonnement_page);
                 
                 if (!$is_abonnement_page): 
                 ?>
