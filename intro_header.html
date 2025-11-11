@@ -4,7 +4,7 @@
     min-height: 100vh;
     background-image: url('http://newsaiige.com/wp-content/uploads/2025/10/intro_acceuil_sans_huile.png');
     background-size: cover;
-    background-position: center;
+    background-position: bottom;
     background-repeat: no-repeat;
     overflow: hidden;
     display: flex;
@@ -42,6 +42,8 @@
     height: auto;
     filter: drop-shadow(0 20px 40px rgba(0,0,0,0.1));
     animation: float 6s ease-in-out infinite;
+    max-width: 85% !important;
+
 }
 
 @keyframes float {
@@ -54,15 +56,14 @@
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
     border-radius: 25px;
-    padding: 50px 40px;
-    box-shadow: 
-        0 25px 50px rgba(0, 0, 0, 0.15),
-        0 10px 20px rgba(0, 0, 0, 0.1),
-        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    padding: 20px 20px;
     position: relative;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid rgb(255 255 255 / 40%);
     max-width: 350px;
     transition: all 0.4s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 .content-card::before {
@@ -101,11 +102,10 @@
 
 .content-card h2 {
     font-family: 'Montserrat', sans-serif;
-    font-size: 1.5rem;
+    font-size: 24px;
     font-weight: 700;
-    color: #333;
-    margin: 0 0 20px 0;
-    text-transform: uppercase;
+    color: #82897F;
+    margin: 0 0 0 0;
     letter-spacing: 1px;
 }
 
@@ -114,7 +114,7 @@
     font-size: 1rem;
     line-height: 1.6;
     color: #666;
-    margin: 0 0 30px 0;
+    margin: 0 0 0 0;
 }
 
 .custom-button {
@@ -125,10 +125,11 @@
     text-decoration: none;
     border-radius: 50px;
     font-family: 'Montserrat', sans-serif;
-    font-weight: 600;
+    font-weight: 400;
     font-size: 1rem;
     transition: all 0.3s ease;
     border: 2px solid #82897F;
+    text-align: center;
 }
 
 .custom-button:hover {
@@ -224,17 +225,17 @@
     
     <div class="content-grid" 
          data-height-control="true"
-         style="--grid-height: 120vh; --card-left-row: 4 / 10; --card-left-align: center; --card-right-row: 7 / 10; --card-right-align: center;">
+         style="--grid-height: 105vh; --card-left-row: 5 / 10; --card-left-align: center; --card-right-row: 5 / 10; --card-right-align: center;">
         <div class="content-card left">
-            <h2>Shoppez Votre Routine !</h2>
+            <h2>Shoppez votre routine !</h2>
             <p>Transformez votre routine bien-être avec notre e-shop spécialisé : des outils et des produits conçus pour sublimer votre corps naturellement, chez vous !</p>
-            <a href="https://newsaiige.com/boutique/" class="custom-button">Notre E-shop</a>
+            <a href="https://newsaiige.com/boutique/" class="custom-button">Notre e-shop</a>
         </div>
         
         <div class="content-card right">
-            <h2>Les Soins</h2>
+            <h2>Les soins</h2>
             <p>Offrez à votre corps et à votre visage l'élégance d'un soin unique : la Madérothérapie. Cette méthode d'exception, agit en profondeur pour remodeler, lisser et redonner éclat à votre corps et à votre visage.</p>
-            <a href="https://newsaiige.com/soins/" class="custom-button">Les Soins</a>
+            <a href="https://newsaiige.com/soins/" class="custom-button">Les soins</a>
         </div>
     </div>
     
