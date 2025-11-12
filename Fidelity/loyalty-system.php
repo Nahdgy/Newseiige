@@ -2,167 +2,48 @@
 /**
  * Système de fidélité Newsaiige
  * Gestion complète des points de fidélité, paliers, et bons d'achat
+ * 
+ * IMPORTANT: Avant d'utiliser ce système, vous devez exécuter le fichier
+ * loyalty-database.sql dans votre base de données MySQL pour créer les tables nécessaires.
  */
 
-// Hook d'activation pour créer les tables
-register_activation_hook(__FILE__, 'newsaiige_loyalty_create_tables');
-
-function newsaiige_loyalty_create_tables() {
+// Vérification de la présence des tables nécessaires
+function newsaiige_loyalty_check_tables() {
     global $wpdb;
     
-    $charset_collate = $wpdb->get_charset_collate();
-    
-    // Table des points de fidélité
-    $table_points = $wpdb->prefix . 'newsaiige_loyalty_points';
-    $sql_points = "CREATE TABLE $table_points (
-        id int(11) NOT NULL AUTO_INCREMENT,
-        user_id int(11) NOT NULL,
-        points_earned int(11) NOT NULL DEFAULT 0,
-        points_used int(11) NOT NULL DEFAULT 0,
-        points_available int(11) NOT NULL DEFAULT 0,
-        order_id int(11) NULL,
-        action_type varchar(50) NOT NULL,
-        description text,
-        created_at datetime DEFAULT CURRENT_TIMESTAMP,
-        expires_at datetime NULL,
-        is_active tinyint(1) DEFAULT 1,
-        PRIMARY KEY (id),
-        KEY user_id (user_id),
-        KEY order_id (order_id)
-    ) $charset_collate;";
-    
-    // Table des paliers de fidélité
-    $table_tiers = $wpdb->prefix . 'newsaiige_loyalty_tiers';
-    $sql_tiers = "CREATE TABLE $table_tiers (
-        id int(11) NOT NULL AUTO_INCREMENT,
-        tier_name varchar(100) NOT NULL,
-        tier_slug varchar(100) NOT NULL UNIQUE,
-        points_required int(11) NOT NULL,
-        tier_order int(11) NOT NULL,
-        benefits text,
-        birthday_bonus_percentage int(11) DEFAULT 0,
-        email_template text,
-        is_active tinyint(1) DEFAULT 1,
-        created_at datetime DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY (id),
-        KEY tier_order (tier_order)
-    ) $charset_collate;";
-    
-    // Table des bons d'achat
-    $table_vouchers = $wpdb->prefix . 'newsaiige_loyalty_vouchers';
-    $sql_vouchers = "CREATE TABLE $table_vouchers (
-        id int(11) NOT NULL AUTO_INCREMENT,
-        user_id int(11) NOT NULL,
-        voucher_code varchar(50) NOT NULL UNIQUE,
-        voucher_type varchar(50) NOT NULL,
-        amount decimal(10,2) NOT NULL,
-        percentage int(11) NULL,
-        points_cost int(11) NOT NULL,
-        is_used tinyint(1) DEFAULT 0,
-        used_order_id int(11) NULL,
-        created_at datetime DEFAULT CURRENT_TIMESTAMP,
-        expires_at datetime NOT NULL,
-        used_at datetime NULL,
-        PRIMARY KEY (id),
-        KEY user_id (user_id),
-        KEY voucher_code (voucher_code)
-    ) $charset_collate;";
-    
-    // Table des paliers utilisateurs
-    $table_user_tiers = $wpdb->prefix . 'newsaiige_loyalty_user_tiers';
-    $sql_user_tiers = "CREATE TABLE $table_user_tiers (
-        id int(11) NOT NULL AUTO_INCREMENT,
-        user_id int(11) NOT NULL,
-        tier_id int(11) NOT NULL,
-        achieved_at datetime DEFAULT CURRENT_TIMESTAMP,
-        is_current tinyint(1) DEFAULT 1,
-        PRIMARY KEY (id),
-        KEY user_id (user_id),
-        KEY tier_id (tier_id)
-    ) $charset_collate;";
-    
-    // Table des paramètres du système
-    $table_settings = $wpdb->prefix . 'newsaiige_loyalty_settings';
-    $sql_settings = "CREATE TABLE $table_settings (
-        id int(11) NOT NULL AUTO_INCREMENT,
-        setting_key varchar(100) NOT NULL UNIQUE,
-        setting_value text NOT NULL,
-        setting_type varchar(50) DEFAULT 'string',
-        updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        PRIMARY KEY (id),
-        KEY setting_key (setting_key)
-    ) $charset_collate;";
-    
-    require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-    dbDelta($sql_points);
-    dbDelta($sql_tiers);
-    dbDelta($sql_vouchers);
-    dbDelta($sql_user_tiers);
-    dbDelta($sql_settings);
-    
-    // Insérer les paramètres par défaut
-    $default_settings = array(
-        'points_per_euro' => '1',
-        'points_expiry_days' => '365',
-        'voucher_expiry_days' => '90',
-        'min_points_conversion' => '50',
-        'euro_per_point_conversion' => '0.02',
-        'subscription_required' => '1',
-        'subscription_category_slug' => 'soins',
-        'email_notifications_enabled' => '1'
+    $required_tables = array(
+        $wpdb->prefix . 'newsaiige_loyalty_points',
+        $wpdb->prefix . 'newsaiige_loyalty_tiers',
+        $wpdb->prefix . 'newsaiige_loyalty_vouchers',
+        $wpdb->prefix . 'newsaiige_loyalty_user_tiers',
+        $wpdb->prefix . 'newsaiige_loyalty_settings'
     );
     
-    foreach ($default_settings as $key => $value) {
-        $wpdb->insert(
-            $table_settings,
-            array(
-                'setting_key' => $key,
-                'setting_value' => $value,
-                'setting_type' => 'string'
-            )
-        );
+    $missing_tables = array();
+    
+    foreach ($required_tables as $table) {
+        $result = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $table));
+        if ($result !== $table) {
+            $missing_tables[] = $table;
+        }
     }
     
-    // Insérer les paliers par défaut
-    $default_tiers = array(
-        array(
-            'tier_name' => 'Bronze',
-            'tier_slug' => 'bronze',
-            'points_required' => 0,
-            'tier_order' => 1,
-            'benefits' => 'Bienvenue dans notre programme de fidélité !',
-            'birthday_bonus_percentage' => 5
-        ),
-        array(
-            'tier_name' => 'Argent',
-            'tier_slug' => 'silver',
-            'points_required' => 100,
-            'tier_order' => 2,
-            'benefits' => 'Bon d\'achat de 5€ offert',
-            'birthday_bonus_percentage' => 10
-        ),
-        array(
-            'tier_name' => 'Or',
-            'tier_slug' => 'gold',
-            'points_required' => 300,
-            'tier_order' => 3,
-            'benefits' => 'Bon d\'achat de 15€ offert + avantages exclusifs',
-            'birthday_bonus_percentage' => 15
-        ),
-        array(
-            'tier_name' => 'Platine',
-            'tier_slug' => 'platinum',
-            'points_required' => 500,
-            'tier_order' => 4,
-            'benefits' => 'Bon d\'achat de 25€ offert + avantages VIP',
-            'birthday_bonus_percentage' => 20
-        )
-    );
-    
-    foreach ($default_tiers as $tier) {
-        $wpdb->insert($table_tiers, $tier);
+    if (!empty($missing_tables)) {
+        add_action('admin_notices', function() use ($missing_tables) {
+            echo '<div class="notice notice-error"><p>';
+            echo '<strong>Système de fidélité Newsaiige:</strong> Tables manquantes en base de données: ';
+            echo implode(', ', $missing_tables);
+            echo '<br>Veuillez exécuter le fichier loyalty-database.sql dans votre base de données.';
+            echo '</p></div>';
+        });
+        return false;
     }
+    
+    return true;
 }
+
+// Vérifier les tables au chargement
+add_action('admin_init', 'newsaiige_loyalty_check_tables');
 
 // Classe principale du système de fidélité
 class NewsaiigeLoyaltySystem {
@@ -172,6 +53,7 @@ class NewsaiigeLoyaltySystem {
     private $vouchers_table;
     private $user_tiers_table;
     private $settings_table;
+    private $conversion_rules_table;
     
     public function __construct() {
         global $wpdb;
@@ -180,6 +62,7 @@ class NewsaiigeLoyaltySystem {
         $this->vouchers_table = $wpdb->prefix . 'newsaiige_loyalty_vouchers';
         $this->user_tiers_table = $wpdb->prefix . 'newsaiige_loyalty_user_tiers';
         $this->settings_table = $wpdb->prefix . 'newsaiige_loyalty_settings';
+        $this->conversion_rules_table = $wpdb->prefix . 'newsaiige_loyalty_conversion_rules';
         
         // Hooks WooCommerce
         add_action('woocommerce_order_status_completed', array($this, 'process_order_points'), 10, 1);
@@ -634,7 +517,7 @@ class NewsaiigeLoyaltySystem {
         
         $user_id = get_current_user_id();
         $points_to_convert = intval($_POST['points_to_convert']);
-        $min_points = intval($this->get_setting('min_points_conversion', '50'));
+        $min_points = intval($this->get_setting('min_points_conversion', '700'));
         
         if ($points_to_convert < $min_points) {
             wp_send_json_error("Minimum {$min_points} points requis pour la conversion");
@@ -645,9 +528,11 @@ class NewsaiigeLoyaltySystem {
             wp_send_json_error('Points insuffisants');
         }
         
-        // Calculer le montant du bon (ex: 0.02€ par point)
-        $euro_per_point = floatval($this->get_setting('euro_per_point_conversion', '0.02'));
-        $voucher_amount = $points_to_convert * $euro_per_point;
+        // Calculer le montant du bon selon les règles personnalisées
+        $voucher_amount = $this->calculate_voucher_amount($points_to_convert);
+        if ($voucher_amount === false) {
+            wp_send_json_error('Aucune règle de conversion trouvée pour ce nombre de points');
+        }
         
         // Déduire les points
         if ($this->deduct_points($user_id, $points_to_convert, 'conversion')) {
@@ -714,6 +599,54 @@ class NewsaiigeLoyaltySystem {
         );
         
         return $remaining_to_deduct === 0;
+    }
+    
+    /**
+     * Calculer le montant du bon d'achat selon les règles personnalisées
+     */
+    public function calculate_voucher_amount($points_to_convert) {
+        global $wpdb;
+        
+        // Récupérer la règle exacte ou la plus proche inférieure
+        $rule = $wpdb->get_row($wpdb->prepare(
+            "SELECT voucher_amount FROM {$this->conversion_rules_table} 
+             WHERE points_required <= %d AND is_active = 1 
+             ORDER BY points_required DESC LIMIT 1",
+            $points_to_convert
+        ));
+        
+        if ($rule) {
+            return floatval($rule->voucher_amount);
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Obtenir toutes les règles de conversion actives
+     */
+    public function get_conversion_rules() {
+        global $wpdb;
+        
+        return $wpdb->get_results(
+            "SELECT * FROM {$this->conversion_rules_table} 
+             WHERE is_active = 1 
+             ORDER BY points_required ASC"
+        );
+    }
+    
+    /**
+     * Obtenir les options de conversion disponibles pour un utilisateur
+     */
+    public function get_available_conversions($user_points) {
+        global $wpdb;
+        
+        return $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM {$this->conversion_rules_table} 
+             WHERE points_required <= %d AND is_active = 1 
+             ORDER BY points_required DESC",
+            $user_points
+        ));
     }
     
     /**
@@ -1047,12 +980,110 @@ function newsaiige_loyalty_shortcode($atts) {
         text-align: center;
     }
 
+    .conversion-options {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 15px;
+        margin-bottom: 30px;
+    }
+
+    .conversion-option {
+        background: white;
+        border: 2px solid #e9ecef;
+        border-radius: 10px;
+        padding: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .conversion-option:hover {
+        border-color: #82897F;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(130, 137, 127, 0.2);
+    }
+
+    .conversion-info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .conversion-points {
+        font-weight: 700;
+        color: #82897F;
+        font-size: 1.1rem;
+    }
+
+    .conversion-arrow {
+        color: #666;
+        font-size: 1.2rem;
+    }
+
+    .conversion-amount {
+        font-weight: 700;
+        color: #28a745;
+        font-size: 1.2rem;
+    }
+
+    .conversion-select-btn {
+        background: #82897F;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 8px 15px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .conversion-select-btn:hover {
+        background: #6d7569;
+        transform: scale(1.05);
+    }
+
     .conversion-form {
         display: flex;
         gap: 15px;
-        align-items: end;
-        flex-wrap: wrap;
+        align-items: center;
         justify-content: center;
+        flex-wrap: wrap;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 10px;
+        border: 2px solid #82897F;
+    }
+
+    .conversion-summary {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .cancel-btn {
+        background: #6c757d;
+        color: white;
+        border: none;
+        border-radius: 10px;
+        padding: 12px 25px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        height: fit-content;
+    }
+
+    .cancel-btn:hover {
+        background: #5a6268;
+    }
+
+    .conversion-message {
+        text-align: center;
+        padding: 20px;
+        color: #666;
+        font-size: 1.1rem;
     }
 
     .form-group {
@@ -1309,23 +1340,45 @@ function newsaiige_loyalty_shortcode($atts) {
         </div>
 
         <!-- Conversion de points -->
-        <?php if ($points_available >= 50): ?>
+        <?php 
+        $min_points = intval($newsaiige_loyalty->get_setting('min_points_conversion', '700'));
+        $available_conversions = $newsaiige_loyalty->get_available_conversions($points_available);
+        ?>
+        <?php if ($points_available >= $min_points && !empty($available_conversions)): ?>
         <div class="points-conversion">
             <h3 class="conversion-title">Convertir mes points en bon d'achat</h3>
-            <form class="conversion-form" id="conversionForm">
-                <div class="form-group">
-                    <label class="form-label" for="points_to_convert">Points à convertir</label>
-                    <input type="number" id="points_to_convert" class="form-input" 
-                           min="50" max="<?php echo $points_available; ?>" step="10" 
-                           placeholder="Minimum 50 points">
+            
+            <!-- Options de conversion disponibles -->
+            <div class="conversion-options">
+                <?php foreach ($available_conversions as $conversion): ?>
+                <div class="conversion-option" data-points="<?php echo $conversion->points_required; ?>" 
+                     data-amount="<?php echo $conversion->voucher_amount; ?>">
+                    <div class="conversion-info">
+                        <span class="conversion-points"><?php echo number_format($conversion->points_required); ?> points</span>
+                        <span class="conversion-arrow">→</span>
+                        <span class="conversion-amount"><?php echo number_format($conversion->voucher_amount, 2); ?>€</span>
+                    </div>
+                    <button type="button" class="conversion-select-btn" onclick="selectConversion(<?php echo $conversion->points_required; ?>, <?php echo $conversion->voucher_amount; ?>)">
+                        Choisir
+                    </button>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Valeur du bon</label>
-                    <input type="text" id="voucher_preview" class="form-input" readonly 
-                           placeholder="0,00€">
+                <?php endforeach; ?>
+            </div>
+            
+            <!-- Formulaire de conversion -->
+            <form class="conversion-form" id="conversionForm" style="display: none;">
+                <input type="hidden" id="selected_points" name="points_to_convert">
+                <div class="conversion-summary">
+                    <span id="conversion_display"></span>
                 </div>
-                <button type="submit" class="convert-btn">Convertir</button>
+                <button type="submit" class="convert-btn">Confirmer la conversion</button>
+                <button type="button" class="cancel-btn" onclick="cancelConversion()">Annuler</button>
             </form>
+        </div>
+        <?php elseif ($points_available < $min_points): ?>
+        <div class="points-conversion">
+            <h3 class="conversion-title">Conversion de points</h3>
+            <p class="conversion-message">Vous avez besoin d'au moins <?php echo $min_points; ?> points pour effectuer une conversion.</p>
         </div>
         <?php endif; ?>
 
@@ -1357,18 +1410,23 @@ function newsaiige_loyalty_shortcode($atts) {
     </div>
 
     <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Calculateur de conversion de points
-        const pointsInput = document.getElementById('points_to_convert');
-        const previewInput = document.getElementById('voucher_preview');
+    // Fonction pour sélectionner une option de conversion
+    function selectConversion(points, amount) {
+        document.getElementById('selected_points').value = points;
+        document.getElementById('conversion_display').textContent = points + ' points → ' + amount.toFixed(2) + '€';
         
-        if (pointsInput && previewInput) {
-            pointsInput.addEventListener('input', function() {
-                const points = parseInt(this.value) || 0;
-                const euroValue = points * 0.02; // 0.02€ par point
-                previewInput.value = euroValue.toFixed(2) + '€';
-            });
-        }
+        // Cacher les options et afficher le formulaire
+        document.querySelector('.conversion-options').style.display = 'none';
+        document.getElementById('conversionForm').style.display = 'flex';
+    }
+    
+    // Fonction pour annuler la conversion
+    function cancelConversion() {
+        document.querySelector('.conversion-options').style.display = 'grid';
+        document.getElementById('conversionForm').style.display = 'none';
+    }
+    
+    document.addEventListener('DOMContentLoaded', function() {
         
         // Soumission du formulaire de conversion
         const conversionForm = document.getElementById('conversionForm');
@@ -1376,9 +1434,9 @@ function newsaiige_loyalty_shortcode($atts) {
             conversionForm.addEventListener('submit', function(e) {
                 e.preventDefault();
                 
-                const points = parseInt(pointsInput.value);
-                if (points < 50) {
-                    alert('Minimum 50 points requis pour la conversion');
+                const points = parseInt(document.getElementById('selected_points').value);
+                if (!points) {
+                    alert('Erreur: aucune conversion sélectionnée');
                     return;
                 }
                 
@@ -1388,7 +1446,9 @@ function newsaiige_loyalty_shortcode($atts) {
                 formData.append('points_to_convert', points);
                 
                 const submitBtn = this.querySelector('.convert-btn');
+                const cancelBtn = this.querySelector('.cancel-btn');
                 submitBtn.disabled = true;
+                cancelBtn.disabled = true;
                 submitBtn.textContent = 'Conversion...';
                 
                 fetch(newsaiige_loyalty_ajax.ajax_url, {
@@ -1409,7 +1469,8 @@ function newsaiige_loyalty_shortcode($atts) {
                 })
                 .finally(() => {
                     submitBtn.disabled = false;
-                    submitBtn.textContent = 'Convertir';
+                    cancelBtn.disabled = false;
+                    submitBtn.textContent = 'Confirmer la conversion';
                 });
             });
         }

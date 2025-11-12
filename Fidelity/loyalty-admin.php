@@ -29,6 +29,15 @@ function newsaiige_loyalty_admin_menu() {
     
     add_submenu_page(
         'newsaiige-loyalty',
+        'Règles de Conversion',
+        'Conversions',
+        'manage_options',
+        'newsaiige-loyalty-conversions',
+        'newsaiige_loyalty_conversions_page'
+    );
+    
+    add_submenu_page(
+        'newsaiige-loyalty',
         'Utilisateurs',
         'Utilisateurs',
         'manage_options',
@@ -801,12 +810,23 @@ function newsaiige_loyalty_settings_page() {
                         </td>
                     </tr>
                     <tr>
+                        <th><label for="use_conversion_rules">Mode de conversion</label></th>
+                        <td>
+                            <label>
+                                <input type="checkbox" id="use_conversion_rules" name="use_conversion_rules" value="1" 
+                                       <?php checked(get_loyalty_setting('use_conversion_rules', '1'), '1'); ?>>
+                                Utiliser les règles de conversion personnalisées
+                            </label>
+                            <p class="description">Si décoché, utilise une conversion fixe par point (paramètre ci-dessous)</p>
+                        </td>
+                    </tr>
+                    <tr id="euro_per_point_row" style="<?php echo get_loyalty_setting('use_conversion_rules', '1') == '1' ? 'display:none;' : ''; ?>">
                         <th><label for="euro_per_point_conversion">Valeur de conversion (€ par point)</label></th>
                         <td>
                             <input type="number" id="euro_per_point_conversion" name="euro_per_point_conversion" 
                                    class="small-text" min="0.01" step="0.01" 
                                    value="<?php echo esc_attr(get_loyalty_setting('euro_per_point_conversion', '0.02')); ?>">
-                            <p class="description">Valeur en euros d'un point lors de la conversion en bon d'achat</p>
+                            <p class="description">Valeur en euros d'un point lors de la conversion en bon d'achat (mode fixe uniquement)</p>
                         </td>
                     </tr>
                 </table>
@@ -898,5 +918,209 @@ function newsaiige_loyalty_settings_page() {
             echo '<div class="notice notice-success"><p>Nettoyage effectué avec succès !</p></div>';
         }
     }
+}
+
+/**
+ * Page d'administration des règles de conversion
+ */
+function newsaiige_loyalty_conversions_page() {
+    global $wpdb;
+    $conversion_rules_table = $wpdb->prefix . 'newsaiige_loyalty_conversion_rules';
+    
+    // Traitement des actions
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        if ($_POST['action'] === 'add_rule' && wp_verify_nonce($_POST['_wpnonce'], 'loyalty_conversion_action')) {
+            $wpdb->insert(
+                $conversion_rules_table,
+                array(
+                    'points_required' => intval($_POST['points_required']),
+                    'voucher_amount' => floatval($_POST['voucher_amount']),
+                    'rule_order' => intval($_POST['rule_order']),
+                    'is_active' => 1
+                )
+            );
+            echo '<div class="notice notice-success"><p>Règle de conversion ajoutée avec succès !</p></div>';
+        }
+        
+        if ($_POST['action'] === 'update_rule' && wp_verify_nonce($_POST['_wpnonce'], 'loyalty_conversion_action')) {
+            $wpdb->update(
+                $conversion_rules_table,
+                array(
+                    'points_required' => intval($_POST['points_required']),
+                    'voucher_amount' => floatval($_POST['voucher_amount']),
+                    'rule_order' => intval($_POST['rule_order'])
+                ),
+                array('id' => intval($_POST['rule_id']))
+            );
+            echo '<div class="notice notice-success"><p>Règle de conversion mise à jour !</p></div>';
+        }
+    }
+    
+    // Suppression d'une règle
+    if (isset($_GET['delete']) && wp_verify_nonce($_GET['_wpnonce'], 'delete_rule')) {
+        $wpdb->delete($conversion_rules_table, array('id' => intval($_GET['delete'])));
+        echo '<div class="notice notice-success"><p>Règle supprimée avec succès !</p></div>';
+    }
+    
+    // Toggle active/inactive
+    if (isset($_GET['toggle']) && wp_verify_nonce($_GET['_wpnonce'], 'toggle_rule')) {
+        $rule = $wpdb->get_row($wpdb->prepare("SELECT * FROM $conversion_rules_table WHERE id = %d", intval($_GET['toggle'])));
+        if ($rule) {
+            $new_status = $rule->is_active ? 0 : 1;
+            $wpdb->update($conversion_rules_table, array('is_active' => $new_status), array('id' => $rule->id));
+            echo '<div class="notice notice-success"><p>Statut de la règle mis à jour !</p></div>';
+        }
+    }
+    
+    // Récupérer les règles existantes
+    $conversion_rules = $wpdb->get_results("SELECT * FROM $conversion_rules_table ORDER BY rule_order ASC, points_required ASC");
+    ?>
+    
+<div class="wrap">
+    <h1>Règles de Conversion Points → Bons d'Achat</h1>
+    
+    <div class="loyalty-admin-container">
+        <div class="card">
+            <h2>Ajouter une nouvelle règle</h2>
+            <form method="post" class="loyalty-form">
+                <?php wp_nonce_field('loyalty_conversion_action'); ?>
+                <input type="hidden" name="action" value="add_rule">
+                
+                <table class="form-table">
+                    <tr>
+                        <th><label for="points_required">Points requis</label></th>
+                        <td>
+                            <input type="number" id="points_required" name="points_required" 
+                                   class="small-text" min="1" step="1" required>
+                            <p class="description">Nombre de points nécessaires pour cette conversion</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><label for="voucher_amount">Montant du bon (€)</label></th>
+                        <td>
+                            <input type="number" id="voucher_amount" name="voucher_amount" 
+                                   class="small-text" min="0.01" step="0.01" required>
+                            <p class="description">Valeur en euros du bon d'achat généré</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><label for="rule_order">Ordre d'affichage</label></th>
+                        <td>
+                            <input type="number" id="rule_order" name="rule_order" 
+                                   class="small-text" min="0" step="1" value="0">
+                            <p class="description">Ordre d'affichage dans l'interface (0 = premier)</p>
+                        </td>
+                    </tr>
+                </table>
+                
+                <p class="submit">
+                    <input type="submit" name="submit" id="submit" class="button-primary" value="Ajouter la règle">
+                </p>
+            </form>
+        </div>
+        
+        <div class="card">
+            <h2>Règles existantes</h2>
+            
+            <?php if (!empty($conversion_rules)): ?>
+            <table class="wp-list-table widefat fixed striped">
+                <thead>
+                    <tr>
+                        <th style="width: 15%;">Points requis</th>
+                        <th style="width: 15%;">Montant du bon</th>
+                        <th style="width: 15%;">Ratio (€/point)</th>
+                        <th style="width: 10%;">Ordre</th>
+                        <th style="width: 10%;">Statut</th>
+                        <th style="width: 20%;">Date création</th>
+                        <th style="width: 15%;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="conversion-rules-list">
+                    <?php foreach ($conversion_rules as $rule): ?>
+                        <?php $editing = isset($_GET['edit']) && $_GET['edit'] == $rule->id; ?>
+                        <tr class="<?php echo !$rule->is_active ? 'inactive' : ''; ?>">
+                            <?php if ($editing): ?>
+                                <form method="post">
+                                    <?php wp_nonce_field('loyalty_conversion_action'); ?>
+                                    <input type="hidden" name="action" value="update_rule">
+                                    <input type="hidden" name="rule_id" value="<?php echo $rule->id; ?>">
+                                    
+                                    <td><input type="number" name="points_required" class="small-text" value="<?php echo esc_attr($rule->points_required); ?>" required></td>
+                                    <td><input type="number" name="voucher_amount" class="small-text" step="0.01" value="<?php echo esc_attr($rule->voucher_amount); ?>" required></td>
+                                    <td><?php echo number_format($rule->voucher_amount / $rule->points_required, 4); ?>€</td>
+                                    <td><input type="number" name="rule_order" class="small-text" value="<?php echo esc_attr($rule->rule_order); ?>"></td>
+                                    <td><?php echo $rule->is_active ? '<span style="color: green;">Actif</span>' : '<span style="color: red;">Inactif</span>'; ?></td>
+                                    <td><?php echo date('d/m/Y H:i', strtotime($rule->created_at)); ?></td>
+                                    <td>
+                                        <input type="submit" class="button-primary" value="Sauvegarder">
+                                        <a href="<?php echo admin_url('admin.php?page=newsaiige-loyalty-conversions'); ?>" class="button">Annuler</a>
+                                    </td>
+                                </form>
+                            <?php else: ?>
+                                <td><strong><?php echo number_format($rule->points_required); ?> points</strong></td>
+                                <td><strong><?php echo number_format($rule->voucher_amount, 2); ?>€</strong></td>
+                                <td><?php echo number_format($rule->voucher_amount / $rule->points_required, 4); ?>€</td>
+                                <td><?php echo $rule->rule_order; ?></td>
+                                <td><?php echo $rule->is_active ? '<span style="color: green;">✓ Actif</span>' : '<span style="color: red;">✗ Inactif</span>'; ?></td>
+                                <td><?php echo date('d/m/Y H:i', strtotime($rule->created_at)); ?></td>
+                                <td>
+                                    <a href="<?php echo admin_url('admin.php?page=newsaiige-loyalty-conversions&edit=' . $rule->id); ?>" class="button">Modifier</a>
+                                    <a href="<?php echo wp_nonce_url(admin_url('admin.php?page=newsaiige-loyalty-conversions&toggle=' . $rule->id), 'toggle_rule'); ?>" class="button">
+                                        <?php echo $rule->is_active ? 'Désactiver' : 'Activer'; ?>
+                                    </a>
+                                    <a href="<?php echo wp_nonce_url(admin_url('admin.php?page=newsaiige-loyalty-conversions&delete=' . $rule->id), 'delete_rule'); ?>" 
+                                       class="button button-link-delete" onclick="return confirm('Supprimer cette règle de conversion ?')">Supprimer</a>
+                                </td>
+                            <?php endif; ?>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+            
+            <div class="conversion-rules-help">
+                <h3>Informations importantes :</h3>
+                <ul>
+                    <li><strong>Ordre d'application :</strong> Les utilisateurs verront toutes les règles pour lesquelles ils ont suffisamment de points.</li>
+                    <li><strong>Ratio :</strong> Plus le ratio €/point est élevé, plus la conversion est avantageuse pour l'utilisateur.</li>
+                    <li><strong>Stratégie recommandée :</strong> Offrir de meilleurs ratios pour encourager l'accumulation de plus de points.</li>
+                    <li><strong>Règles inactives :</strong> Ne sont pas proposées aux utilisateurs mais restent dans l'historique.</li>
+                </ul>
+            </div>
+            
+            <?php else: ?>
+            <p>Aucune règle de conversion définie. Ajoutez-en une pour permettre aux utilisateurs de convertir leurs points.</p>
+            <?php endif; ?>
+        </div>
+    </div>
+</div>
+
+<style>
+.conversion-rules-help {
+    margin-top: 20px;
+    padding: 15px;
+    background: #f0f8ff;
+    border-left: 4px solid #82897F;
+}
+
+.conversion-rules-help h3 {
+    margin-top: 0;
+    color: #82897F;
+}
+
+.conversion-rules-help ul {
+    margin-bottom: 0;
+}
+
+.conversion-rules-help li {
+    margin-bottom: 8px;
+}
+
+tr.inactive {
+    opacity: 0.6;
+    background-color: #f9f9f9;
+}
+</style>
+
+<?php
 }
 ?>
