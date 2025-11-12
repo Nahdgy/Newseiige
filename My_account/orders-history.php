@@ -192,7 +192,7 @@ function newsaiige_orders_history_shortcode($atts) {
         margin-bottom: 3px;
     }
 
-    .order-link a {
+    .order-link {
         display: inline-block;
         padding: 15px 40px;
         background: #82897F;
@@ -206,7 +206,7 @@ function newsaiige_orders_history_shortcode($atts) {
         cursor: pointer;
     }
 
-    .order-link a:hover {
+    .order-link :hover {
         background: transparent;
         color: #82897F !important;
         transform: translateY(-3px);

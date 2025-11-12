@@ -363,7 +363,7 @@ function newsaiige_loyalty_tiers_page() {
         <h1>Gestion des Paliers de Fidélité</h1>
         
         <!-- Formulaire d'ajout -->
-        <div class="card">
+        <div class="loyalty-admin-form-card">
             <h2>Ajouter un nouveau palier</h2>
             <form method="post" action="">
                 <?php wp_nonce_field('loyalty_tier_action'); ?>
@@ -399,7 +399,7 @@ function newsaiige_loyalty_tiers_page() {
         </div>
         
         <!-- Liste des paliers existants -->
-        <div class="card">
+        <div class="loyalty-admin-table-card">
             <h2>Paliers existants</h2>
             <table class="wp-list-table widefat fixed striped">
                 <thead>
@@ -586,7 +586,7 @@ function newsaiige_loyalty_users_page() {
         <h1>Gestion des Utilisateurs - Programme de Fidélité</h1>
         
         <!-- Recherche -->
-        <div class="card">
+        <div class="loyalty-admin-search-card">
             <form method="get" action="">
                 <input type="hidden" name="page" value="newsaiige-loyalty-users">
                 <p class="search-box">
@@ -598,7 +598,7 @@ function newsaiige_loyalty_users_page() {
         </div>
         
         <!-- Ajouter des points manuellement -->
-        <div class="card">
+        <div class="loyalty-admin-form-card">
             <h2>Ajouter des points manuellement</h2>
             <form method="post" action="">
                 <?php wp_nonce_field('loyalty_user_action'); ?>
@@ -636,7 +636,7 @@ function newsaiige_loyalty_users_page() {
         </div>
         
         <!-- Liste des utilisateurs -->
-        <div class="card">
+        <div class="loyalty-admin-table-card">
             <h2>Utilisateurs du programme de fidélité</h2>
             <table class="wp-list-table widefat fixed striped">
                 <thead>
@@ -779,7 +779,7 @@ function newsaiige_loyalty_settings_page() {
         <form method="post" action="">
             <?php wp_nonce_field('loyalty_settings'); ?>
             
-            <div class="card">
+            <div class="loyalty-admin-settings-card">
                 <h2>Paramètres des Points</h2>
                 <table class="form-table">
                     <tr>
@@ -832,7 +832,7 @@ function newsaiige_loyalty_settings_page() {
                 </table>
             </div>
             
-            <div class="card">
+            <div class="loyalty-admin-settings-card">
                 <h2>Paramètres des Bons d'achat</h2>
                 <table class="form-table">
                     <tr>
@@ -847,7 +847,7 @@ function newsaiige_loyalty_settings_page() {
                 </table>
             </div>
             
-            <div class="card">
+            <div class="loyalty-admin-settings-card">
                 <h2>Conditions d'éligibilité</h2>
                 <table class="form-table">
                     <tr>
@@ -873,7 +873,7 @@ function newsaiige_loyalty_settings_page() {
                 </table>
             </div>
             
-            <div class="card">
+            <div class="loyalty-admin-settings-card">
                 <h2>Notifications</h2>
                 <table class="form-table">
                     <tr>
@@ -895,7 +895,7 @@ function newsaiige_loyalty_settings_page() {
         </form>
         
         <!-- Actions de maintenance -->
-        <div class="card">
+        <div class="loyalty-admin-maintenance-card">
             <h2>Maintenance</h2>
             <p>
                 <a href="<?php echo wp_nonce_url(admin_url('admin.php?page=newsaiige-loyalty-settings&action=cleanup'), 'loyalty_cleanup'); ?>" 
@@ -980,7 +980,7 @@ function newsaiige_loyalty_conversions_page() {
     <h1>Règles de Conversion Points → Bons d'Achat</h1>
     
     <div class="loyalty-admin-container">
-        <div class="card">
+        <div class="loyalty-admin-form-card">
             <h2>Ajouter une nouvelle règle</h2>
             <form method="post" class="loyalty-form">
                 <?php wp_nonce_field('loyalty_conversion_action'); ?>
@@ -1019,7 +1019,7 @@ function newsaiige_loyalty_conversions_page() {
             </form>
         </div>
         
-        <div class="card">
+        <div class="loyalty-admin-table-card">
             <h2>Règles existantes</h2>
             
             <?php if (!empty($conversion_rules)): ?>
@@ -1118,6 +1118,140 @@ function newsaiige_loyalty_conversions_page() {
 tr.inactive {
     opacity: 0.6;
     background-color: #f9f9f9;
+}
+
+/* Styles généraux pour les cartes d'administration de fidélité */
+.loyalty-admin-form-card,
+.loyalty-admin-table-card,
+.loyalty-admin-settings-card,
+.loyalty-admin-search-card,
+.loyalty-admin-maintenance-card {
+    background: #ffffff;
+    border: 1px solid #e1e1e1;
+    border-radius: 8px;
+    margin: 20px 0;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.loyalty-admin-form-card h2,
+.loyalty-admin-table-card h2,
+.loyalty-admin-settings-card h2,
+.loyalty-admin-search-card h2,
+.loyalty-admin-maintenance-card h2 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #333;
+    font-size: 18px;
+    border-bottom: 2px solid #82897F;
+    padding-bottom: 10px;
+}
+
+/* Styles spécifiques pour les cartes de formulaire */
+.loyalty-admin-form-card .form-table {
+    margin-bottom: 20px;
+}
+
+.loyalty-admin-form-card .form-table th {
+    width: 200px;
+    padding: 15px 10px 15px 0;
+    color: #333;
+    font-weight: 600;
+}
+
+.loyalty-admin-form-card .form-table td {
+    padding: 15px 10px;
+}
+
+.loyalty-admin-form-card .button-primary {
+    background-color: #82897F;
+    border-color: #6c7367;
+    padding: 8px 16px;
+    font-weight: 600;
+}
+
+.loyalty-admin-form-card .button-primary:hover {
+    background-color: #6c7367;
+    border-color: #5a5e56;
+}
+
+/* Styles pour les cartes de tableau */
+.loyalty-admin-table-card .wp-list-table {
+    margin-top: 15px;
+    border: 1px solid #e1e1e1;
+    border-radius: 4px;
+}
+
+.loyalty-admin-table-card .wp-list-table th {
+    background: #f8f9fa;
+    color: #333;
+    font-weight: 600;
+    border-bottom: 2px solid #e1e1e1;
+}
+
+.loyalty-admin-table-card .wp-list-table tr:hover {
+    background-color: #f8f9fa;
+}
+
+/* Styles pour les cartes de paramètres */
+.loyalty-admin-settings-card .form-table th {
+    width: 250px;
+    color: #333;
+    font-weight: 600;
+}
+
+.loyalty-admin-settings-card .description {
+    color: #666;
+    font-style: italic;
+}
+
+/* Styles pour la carte de recherche */
+.loyalty-admin-search-card {
+    padding: 15px;
+}
+
+.loyalty-admin-search-card .search-box {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.loyalty-admin-search-card input[type="search"] {
+    width: 300px;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.loyalty-admin-search-card .button {
+    background-color: #82897F;
+    border-color: #6c7367;
+    color: white;
+    padding: 8px 16px;
+}
+
+/* Styles pour la carte de maintenance */
+.loyalty-admin-maintenance-card {
+    background: #fffbf0;
+    border-left: 4px solid #f39c12;
+}
+
+.loyalty-admin-maintenance-card .button {
+    background-color: #f39c12;
+    border-color: #e67e22;
+    color: white;
+}
+
+.loyalty-admin-maintenance-card .button:hover {
+    background-color: #e67e22;
+    border-color: #d35400;
+}
+
+/* Container général */
+.loyalty-admin-container {
+    max-width: 1200px;
+    margin: 0 auto;
 }
 </style>
 
