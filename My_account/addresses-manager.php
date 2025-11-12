@@ -602,17 +602,17 @@ function newsaiige_addresses_shortcode($atts) {
 
                             <div class="address-actions">
                                 <button class="address-action-btn edit-btn" title="Modifier" 
-                                        onclick="editAddress(<?php echo esc_attr($address->id); ?>)">
+                                        onclick="editAddress('<?php echo esc_attr($address->id); ?>')">
                                     ✏️
                                 </button>
                                 <?php if (!$address->is_default_billing && !$address->is_default_shipping): ?>
                                     <button class="address-action-btn set-default-btn" title="Définir par défaut" 
-                                            onclick="setDefaultAddress(<?php echo esc_attr($address->id); ?>)">
+                                            onclick="setDefaultAddress('<?php echo esc_attr($address->id); ?>')">
                                         ⭐
                                     </button>
                                 <?php endif; ?>
                                 <button class="address-action-btn delete-btn" title="Supprimer" 
-                                        onclick="deleteAddress(<?php echo esc_attr($address->id); ?>)">
+                                        onclick="deleteAddress('<?php echo esc_attr($address->id); ?>')">
                                     🗑️
                                 </button>
                             </div>
@@ -762,7 +762,7 @@ function newsaiige_addresses_shortcode($atts) {
         
         if (addressId) {
             // Mode modification
-            const address = addresses.find(a => a.id == addressId);
+            const address = addresses.find(a => a.id === addressId);
             if (address) {
                 fillFormWithAddress(address);
                 document.getElementById('modalTitle').textContent = 'Modifier l\'adresse';
