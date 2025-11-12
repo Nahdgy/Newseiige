@@ -1,6 +1,6 @@
 function newsaiige_subscription_history_shortcode($atts) {
     $atts = shortcode_atts(array(
-        'title' => 'Mes Abonnements',
+        'title' => 'Mes abonnements',
         'subtitle' => 'Consultez et gérez les abonnements que vous avez achetés.'
     ), $atts);
     
@@ -178,19 +178,25 @@ function newsaiige_subscription_history_shortcode($atts) {
         font-style: italic;
     }
 
-    .order-link {
-        background-color: #82897F;
-        padding: 15px 20px;
-        border-radius:30px;
+    .order-link a {
+        display: inline-block;
+        padding: 15px 40px;
+        background: #82897F;
+        color: white !important;
         text-decoration: none;
+        border-radius: 50px;
         font-weight: 600;
-        transition: color 0.3s ease;
+        font-size: 1.1rem;
+        transition: all 0.3s ease;
+        border: 2px solid #82897F;
+        cursor: pointer;
     }
 
-    .order-link:hover {
-        color: #82897F;
-        background-color: transparent;
-        border: solid 2px #82897F;
+    .order-link a:hover {
+        background: transparent;
+        color: #82897F !important;
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px rgba(130, 137, 127, 0.3);
     }
 
     .no-subscriptions {

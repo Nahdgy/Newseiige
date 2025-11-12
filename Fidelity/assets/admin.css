@@ -1,0 +1,519 @@
+/* Styles d'administration pour le système de fidélité */
+
+/* Layout principal */
+.loyalty-admin-dashboard {
+    max-width: 1200px;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.stat-card {
+    background: white;
+    border: 1px solid #e1e1e1;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+}
+
+.stat-card h3 {
+    margin: 0 0 10px 0;
+    color: #82897F;
+    font-size: 14px;
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.stat-value {
+    font-size: 32px;
+    font-weight: 700;
+    color: #333;
+    margin: 0;
+    line-height: 1.2;
+}
+
+.stat-description {
+    color: #666;
+    font-size: 12px;
+    margin-top: 5px;
+}
+
+/* Sections d'administration */
+.admin-section {
+    background: white;
+    border: 1px solid #e1e1e1;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+
+.admin-section-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid #e1e1e1;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
+.admin-section-header h2 {
+    margin: 0;
+    font-size: 18px;
+    color: #333;
+    font-weight: 600;
+}
+
+.admin-section-content {
+    padding: 20px;
+}
+
+/* Tables d'administration */
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0;
+}
+
+.admin-table th,
+.admin-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #e1e1e1;
+    vertical-align: middle;
+}
+
+.admin-table th {
+    background: #f8f9fa;
+    font-weight: 600;
+    color: #333;
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+}
+
+.admin-table tr:hover {
+    background-color: rgba(130, 137, 127, 0.05);
+}
+
+.admin-table .button {
+    margin: 0 2px;
+}
+
+/* Badges et statuts */
+.tier-badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    display: inline-block;
+}
+
+.tier-bronze { 
+    background: linear-gradient(135deg, #cd7f32, #a0522d); 
+    color: white; 
+}
+
+.tier-silver { 
+    background: linear-gradient(135deg, #c0c0c0, #808080); 
+    color: white; 
+}
+
+.tier-gold { 
+    background: linear-gradient(135deg, #ffd700, #ffb347); 
+    color: #333; 
+}
+
+.tier-platinum { 
+    background: linear-gradient(135deg, #e5e4e2, #b8b8b8); 
+    color: #333; 
+}
+
+.status-active { 
+    color: #46b450; 
+    font-weight: bold; 
+}
+
+.status-inactive { 
+    color: #dc3232; 
+    font-weight: bold;
+}
+
+/* Formulaires d'administration */
+.loyalty-admin-form {
+    background: white;
+    border: 1px solid #e1e1e1;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.loyalty-admin-form .form-table th {
+    width: 200px;
+    padding-right: 20px;
+}
+
+.loyalty-admin-form .form-table td {
+    padding-left: 0;
+}
+
+.loyalty-admin-form input[type="text"],
+.loyalty-admin-form input[type="number"],
+.loyalty-admin-form textarea,
+.loyalty-admin-form select {
+    width: 100%;
+    max-width: 400px;
+}
+
+.loyalty-admin-form textarea {
+    height: 80px;
+    resize: vertical;
+}
+
+/* Boutons personnalisés */
+.button.loyalty-primary {
+    background: #82897F;
+    border-color: #82897F;
+    color: white;
+    text-shadow: none;
+    box-shadow: 0 2px 4px rgba(130, 137, 127, 0.2);
+}
+
+.button.loyalty-primary:hover {
+    background: #6d7569;
+    border-color: #6d7569;
+    color: white;
+}
+
+.button.loyalty-secondary {
+    background: transparent;
+    border-color: #82897F;
+    color: #82897F;
+}
+
+.button.loyalty-secondary:hover {
+    background: #82897F;
+    color: white;
+}
+
+/* Graphiques simples pour l'admin */
+.loyalty-chart {
+    background: white;
+    border: 1px solid #e1e1e1;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.loyalty-chart-bar {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+    padding: 10px 0;
+}
+
+.loyalty-chart-label {
+    min-width: 120px;
+    font-weight: 600;
+    color: #333;
+    font-size: 14px;
+}
+
+.loyalty-chart-bar-container {
+    flex-grow: 1;
+    background: #f1f1f1;
+    border-radius: 10px;
+    height: 20px;
+    margin: 0 15px;
+    overflow: hidden;
+}
+
+.loyalty-chart-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #82897F, #6d7569);
+    border-radius: 10px;
+    transition: width 0.8s ease;
+}
+
+.loyalty-chart-value {
+    min-width: 60px;
+    font-weight: 600;
+    color: #82897F;
+    text-align: right;
+}
+
+/* Alertes et notifications admin */
+.loyalty-admin-alert {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    color: #856404;
+    padding: 15px;
+    border-radius: 6px;
+    margin: 15px 0;
+}
+
+.loyalty-admin-alert.success {
+    background: #d4edda;
+    border-color: #c3e6cb;
+    color: #155724;
+}
+
+.loyalty-admin-alert.error {
+    background: #f8d7da;
+    border-color: #f5c6cb;
+    color: #721c24;
+}
+
+.loyalty-admin-alert.info {
+    background: #cce7ff;
+    border-color: #b3d9ff;
+    color: #004085;
+}
+
+/* Métriques rapides */
+.loyalty-quick-metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.loyalty-metric-card {
+    background: white;
+    border: 1px solid #e1e1e1;
+    border-radius: 6px;
+    padding: 15px;
+    text-align: center;
+    border-left: 4px solid #82897F;
+}
+
+.loyalty-metric-number {
+    font-size: 24px;
+    font-weight: 700;
+    color: #82897F;
+    margin: 0;
+}
+
+.loyalty-metric-label {
+    color: #666;
+    font-size: 12px;
+    text-transform: uppercase;
+    margin-top: 5px;
+}
+
+/* Filtres et recherche */
+.loyalty-admin-filters {
+    background: #f9f9f9;
+    border: 1px solid #e1e1e1;
+    border-radius: 6px;
+    padding: 20px;
+    margin-bottom: 20px;
+    display: flex;
+    gap: 15px;
+    align-items: end;
+    flex-wrap: wrap;
+}
+
+.loyalty-filter-group {
+    min-width: 150px;
+}
+
+.loyalty-filter-group label {
+    display: block;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 5px;
+    font-size: 12px;
+    text-transform: uppercase;
+}
+
+.loyalty-filter-group input,
+.loyalty-filter-group select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ccd0d4;
+    border-radius: 4px;
+}
+
+/* Actions en lot */
+.loyalty-bulk-actions {
+    background: #f0f0f1;
+    border: 1px solid #c3c4c7;
+    border-radius: 6px;
+    padding: 15px;
+    margin: 20px 0;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.loyalty-bulk-actions select {
+    min-width: 150px;
+}
+
+/* Pagination personnalisée */
+.loyalty-pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin: 20px 0;
+}
+
+.loyalty-pagination .page-numbers {
+    padding: 8px 12px;
+    border: 1px solid #e1e1e1;
+    border-radius: 4px;
+    text-decoration: none;
+    color: #333;
+    transition: all 0.3s ease;
+}
+
+.loyalty-pagination .page-numbers:hover,
+.loyalty-pagination .page-numbers.current {
+    background: #82897F;
+    color: white;
+    border-color: #82897F;
+}
+
+/* Modal d'administration */
+.loyalty-admin-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 100000;
+}
+
+.loyalty-admin-modal-content {
+    background: white;
+    border-radius: 8px;
+    padding: 30px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.loyalty-admin-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #e1e1e1;
+}
+
+.loyalty-admin-modal-close {
+    font-size: 24px;
+    cursor: pointer;
+    color: #666;
+    border: none;
+    background: none;
+    padding: 0;
+    line-height: 1;
+}
+
+.loyalty-admin-modal-close:hover {
+    color: #dc3545;
+}
+
+/* Responsive admin */
+@media (max-width: 1200px) {
+    .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .loyalty-admin-dashboard {
+        padding: 0 10px;
+    }
+    
+    .admin-section-content {
+        padding: 15px;
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .admin-table {
+        font-size: 14px;
+    }
+    
+    .admin-table th,
+    .admin-table td {
+        padding: 8px;
+    }
+    
+    .loyalty-admin-filters {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .loyalty-filter-group {
+        min-width: auto;
+    }
+}
+
+/* Animations admin */
+@keyframes fadeInAdmin {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.admin-section {
+    animation: fadeInAdmin 0.5s ease-out;
+}
+
+.stat-card {
+    animation: fadeInAdmin 0.5s ease-out;
+}
+
+/* Loading states */
+.loyalty-admin-loading {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #82897F;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* États de validation */
+.loyalty-field-valid {
+    border-color: #46b450 !important;
+    box-shadow: 0 0 0 1px #46b450;
+}
+
+.loyalty-field-error {
+    border-color: #dc3232 !important;
+    box-shadow: 0 0 0 1px #dc3232;
+}
+
+.loyalty-field-warning {
+    border-color: #ffb900 !important;
+    box-shadow: 0 0 0 1px #ffb900;
+}

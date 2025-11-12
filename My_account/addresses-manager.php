@@ -1,7 +1,7 @@
 <?php
 function newsaiige_addresses_shortcode($atts) {
     $atts = shortcode_atts(array(
-        'title' => 'Mes Adresses',
+        'title' => 'Mes adresses',
         'subtitle' => 'Gérez vos adresses de livraison et de facturation pour faciliter vos commandes.'
     ), $atts);
     
@@ -342,7 +342,7 @@ function newsaiige_addresses_shortcode($atts) {
         display: none;
         justify-content: center;
         align-items: center;
-        z-index: 10000;
+        z-index: 100000;
         backdrop-filter: blur(5px);
     }
 

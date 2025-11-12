@@ -1,7 +1,7 @@
 <?php
 function newsaiige_payment_methods_shortcode($atts) {
     $atts = shortcode_atts(array(
-        'title' => 'Mes Moyens de Paiement',
+        'title' => 'Mes moyens de paiement',
         'subtitle' => 'Gérez vos cartes bancaires et moyens de paiement en toute sécurité.'
     ), $atts);
     
@@ -252,7 +252,7 @@ function newsaiige_payment_methods_shortcode($atts) {
         display: none;
         justify-content: center;
         align-items: center;
-        z-index: 10000;
+        z-index: 100000;
         backdrop-filter: blur(5px);
     }
 

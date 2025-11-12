@@ -1,0 +1,334 @@
+/* Styles pour le système de fidélité Newsaiige */
+
+/* Widget fidélité */
+.loyalty-widget {
+    padding: 15px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 10px;
+    border-left: 4px solid #82897F;
+    font-family: 'Montserrat', sans-serif;
+}
+
+.loyalty-widget .points-display {
+    font-size: 1.2rem;
+    margin: 0 0 10px 0;
+    color: #333;
+}
+
+.loyalty-widget .tier-display {
+    margin: 0 0 10px 0;
+    color: #666;
+}
+
+.loyalty-widget .tier-name {
+    color: #82897F;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+}
+
+.loyalty-widget .loyalty-link {
+    color: #82897F;
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.3s ease;
+}
+
+.loyalty-widget .loyalty-link:hover {
+    color: #6d7569;
+}
+
+/* Shortcode de points rapide */
+.loyalty-points-display {
+    display: inline-block;
+    padding: 5px 10px;
+    background: rgba(130, 137, 127, 0.1);
+    border-radius: 15px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border: 1px solid rgba(130, 137, 127, 0.2);
+}
+
+/* Styles pour les notifications */
+.loyalty-notification {
+    background: #82897F;
+    color: white;
+    padding: 15px 20px;
+    border-radius: 8px;
+    margin: 20px 0;
+    position: relative;
+}
+
+.loyalty-notification.success {
+    background: #28a745;
+}
+
+.loyalty-notification.error {
+    background: #dc3545;
+}
+
+.loyalty-notification.info {
+    background: #17a2b8;
+}
+
+.loyalty-notification .close-btn {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.2rem;
+    cursor: pointer;
+    opacity: 0.8;
+}
+
+.loyalty-notification .close-btn:hover {
+    opacity: 1;
+}
+
+/* Animations */
+@keyframes slideInDown {
+    from {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.loyalty-card {
+    animation: fadeInUp 0.5s ease-out;
+}
+
+.loyalty-notification {
+    animation: slideInDown 0.3s ease-out;
+}
+
+/* Styles pour les badges de paliers */
+.tier-badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.tier-badge.tier-bronze {
+    background: linear-gradient(135deg, #cd7f32, #a0522d);
+    color: white;
+}
+
+.tier-badge.tier-silver {
+    background: linear-gradient(135deg, #c0c0c0, #808080);
+    color: white;
+}
+
+.tier-badge.tier-gold {
+    background: linear-gradient(135deg, #ffd700, #ffb347);
+    color: #333;
+}
+
+.tier-badge.tier-platinum {
+    background: linear-gradient(135deg, #e5e4e2, #b8b8b8);
+    color: #333;
+}
+
+/* Loading states */
+.loyalty-loading {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(130, 137, 127, 0.3);
+    border-radius: 50%;
+    border-top-color: #82897F;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Styles responsive supplémentaires */
+@media (max-width: 480px) {
+    .loyalty-widget {
+        padding: 12px;
+    }
+    
+    .loyalty-widget .points-display {
+        font-size: 1.1rem;
+    }
+    
+    .loyalty-points-display {
+        font-size: 0.8rem;
+        padding: 4px 8px;
+    }
+    
+    .tier-badge {
+        font-size: 0.7rem;
+        padding: 4px 8px;
+    }
+}
+
+/* Styles pour les tooltips */
+.loyalty-tooltip {
+    position: relative;
+    cursor: help;
+}
+
+.loyalty-tooltip::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #333;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s, visibility 0.3s;
+    z-index: 1000;
+}
+
+.loyalty-tooltip::before {
+    content: '';
+    position: absolute;
+    bottom: 115%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: #333;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s, visibility 0.3s;
+    z-index: 1000;
+}
+
+.loyalty-tooltip:hover::after,
+.loyalty-tooltip:hover::before {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Styles pour les messages de succès dans les formulaires */
+.loyalty-form-success {
+    background: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin: 10px 0;
+}
+
+.loyalty-form-error {
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin: 10px 0;
+}
+
+/* Styles pour les états hover améliorés */
+.loyalty-card:hover .card-value {
+    color: #6d7569;
+    transition: color 0.3s ease;
+}
+
+.voucher-item:hover .voucher-code {
+    color: #6d7569;
+    transition: color 0.3s ease;
+}
+
+/* Styles pour l'accessibilité */
+.loyalty-card:focus,
+.voucher-item:focus {
+    outline: 2px solid #82897F;
+    outline-offset: 2px;
+}
+
+.convert-btn:focus,
+.copy-btn:focus {
+    outline: 2px solid #82897F;
+    outline-offset: 2px;
+}
+
+/* Styles pour les animations de progression */
+.tier-progress-bar {
+    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Styles pour les modales personnalisées */
+.loyalty-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 10001;
+    backdrop-filter: blur(5px);
+}
+
+.loyalty-modal-content {
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    max-width: 500px;
+    width: 90%;
+    position: relative;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    animation: fadeInUp 0.3s ease-out;
+}
+
+.loyalty-modal-close {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    font-size: 1.5rem;
+    color: #666;
+    cursor: pointer;
+    transition: color 0.3s ease;
+}
+
+.loyalty-modal-close:hover {
+    color: #82897F;
+}
+
+/* Styles pour les graphiques simples */
+.loyalty-stats-bar {
+    background: #e9ecef;
+    border-radius: 10px;
+    height: 8px;
+    overflow: hidden;
+    margin: 10px 0;
+}
+
+.loyalty-stats-fill {
+    background: linear-gradient(90deg, #82897F, #6d7569);
+    height: 100%;
+    border-radius: 10px;
+    transition: width 0.8s ease;
+}

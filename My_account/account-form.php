@@ -1,6 +1,6 @@
 function newsaiige_account_form_shortcode($atts) {
     $atts = shortcode_atts(array(
-        'title' => 'Mon Compte',
+        'title' => 'Mon compte',
         'subtitle' => 'Consultez et modifiez vos informations personnelles ci-dessous.'
     ), $atts);
     
