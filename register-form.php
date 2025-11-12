@@ -101,7 +101,7 @@ function newsaiige_register_form_shortcode($atts) {
     }
 
     .newsaiige-auth-title {
-        font-size: 32px;
+        font-size: 28px;
         font-weight: 700;
         color: #333;
         margin-bottom: 15px;
@@ -110,7 +110,7 @@ function newsaiige_register_form_shortcode($atts) {
 
     .newsaiige-auth-subtitle {
         color: #666;
-        font-size: 16px;
+        font-size: 14px;
         margin-bottom: 0;
     }
 
@@ -135,11 +135,11 @@ function newsaiige_register_form_shortcode($atts) {
 
     .newsaiige-form-input {
         width: 100%;
-        padding: 20px 25px !important;
+        padding: 10px 25px !important;
         border: 2px solid #e9ecef;
         border-radius: 50px !important;
         font-family: 'Montserrat', sans-serif;
-        font-size: 16px;
+        font-size: 14px;
         transition: all 0.3s ease;
         box-sizing: border-box;
         background: white;
@@ -184,17 +184,16 @@ function newsaiige_register_form_shortcode($atts) {
 
     .newsaiige-submit-btn {
         width: 100%;
-        padding: 20px;
+        padding: 10px;
         background: #82897F;
         color: white;
         border: none;
         border-radius: 50px;
         font-family: 'Montserrat', sans-serif;
         font-weight: 600;
-        font-size: 18px;
+        font-size: 14px;
         cursor: pointer;
         transition: all 0.3s ease;
-        text-transform: uppercase;
         letter-spacing: 1px;
     }
 
@@ -238,12 +237,12 @@ function newsaiige_register_form_shortcode($atts) {
 
     .newsaiige-social-btn {
         width: 100%;
-        padding: 18px;
+        padding: 10px;
         border: 2px solid #e9ecef;
         border-radius: 50px;
         font-family: 'Montserrat', sans-serif;
         font-weight: 600;
-        font-size: 16px;
+        font-size: 14px;
         cursor: pointer;
         transition: all 0.3s ease;
         margin-bottom: 15px;

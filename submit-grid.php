@@ -1,8 +1,8 @@
 <?php
 function newsaiige_submit_grid_shortcode($atts) {
     $atts = shortcode_atts(array(
-        'title' => 'Les Abonnements',
-        'subtitle' => 'Un rendez-vous mensuel, une parenthèse d\'exception pour votre corps et votre esprit. Rejoins le Club NewSaiige !'
+        'title' => 'Les abonnements',
+        'subtitle' => 'Un rendez-vous mensuel, une parenthèse d\'exception pour votre corps et votre esprit. Rejoins le club NewSaiige !'
     ), $atts);
     
     ob_start();
@@ -10,7 +10,7 @@ function newsaiige_submit_grid_shortcode($atts) {
 
     <style>
     .newsaiige-services-section {
-        padding: 80px 20px;
+        padding: 20px 20px;
         font-family: 'Montserrat', sans-serif;
         background: #fff;
         min-height: 100vh;
@@ -24,23 +24,26 @@ function newsaiige_submit_grid_shortcode($atts) {
     /* SECTION TITRE */
     .services-header {
         margin-bottom: 60px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
     }
 
     .services-title {
-        font-size: 3.2rem;
+        font-size: 28px;
         font-weight: 700;
         color: #82897F;
-        margin: 0 0 30px 0;
+        margin: 0 0 0 0;
         text-align: left;
         line-height: 1.2;
     }
 
-    .services-subtitle {
-        font-size: 1.1rem;
+    .services-subtitle-submit {
+        font-size: 14px;
         color: #000;
         font-weight: 400;
         line-height: 1.6;
-        max-width: 600px;
+        max-width: 580px;
         margin: 0;
     }
 
@@ -60,7 +63,6 @@ function newsaiige_submit_grid_shortcode($atts) {
         cursor: pointer;
         height: 450px;
         text-decoration: none;
-        color: inherit;
     }
 
     .first-card-submit{
@@ -100,14 +102,14 @@ function newsaiige_submit_grid_shortcode($atts) {
     }
 
     .service-name {
-        font-size: 1.6rem;
+        font-size: 20px;
         font-weight: 700;
         margin: 0 0 8px 0;
         line-height: 1.3;
     }
 
     .service-duration-price {
-        font-size: 2rem;
+        font-size: 24px;
         font-weight: 700;
         margin: 0 0 15px 0;
         font-style: italic;
@@ -232,7 +234,7 @@ function newsaiige_submit_grid_shortcode($atts) {
             text-align: center;
         }
 
-        .services-subtitle {
+        .services-subtitle-submit {
             text-align: center;
             margin: 0 auto;
             font-size: 1rem;
@@ -288,7 +290,7 @@ function newsaiige_submit_grid_shortcode($atts) {
             font-size: 1.8rem;
         }
 
-        .services-subtitle {
+        .services-subtitle-submit {
             font-size: 0.95rem;
         }
 
@@ -323,7 +325,7 @@ function newsaiige_submit_grid_shortcode($atts) {
         <div class="services-container">
             <div class="services-header">
                 <h2 class="services-title"><?php echo esc_html($atts['title']); ?></h2>
-                <p class="services-subtitle"><?php echo esc_html($atts['subtitle']); ?></p>
+                <p class="services-subtitle-submit"><?php echo esc_html($atts['subtitle']); ?></p>
             </div>
 
             <div class="services-grid">

@@ -76,7 +76,7 @@ function newsaiige_gift_cards_shortcode($atts) {
         font-weight: 600;
         color: #333;
         margin-bottom: 10px;
-        font-size: 1rem;
+        font-size: 14px;
     }
 
     .form-input,
@@ -86,7 +86,7 @@ function newsaiige_gift_cards_shortcode($atts) {
         border: 2px solid #e9ecef !important;
         border-radius: 30px !important;
         font-family: 'Montserrat', sans-serif;
-        font-size: 1rem;
+        font-size: 11px;
         transition: all 0.3s ease;
         background: white;
         box-sizing: border-box;
@@ -126,14 +126,14 @@ function newsaiige_gift_cards_shortcode($atts) {
     }
 
     .currency-symbol {
-        font-size: 1.5rem;
+        font-size: 14px;
         font-weight: 700;
         color: #82897F;
     }
 
     .amount-input {
         flex: 1;
-        font-size: 1.5rem;
+        font-size: 14px;
         font-weight: 600;
         text-align: center;
         border: none !important;
@@ -177,7 +177,7 @@ function newsaiige_gift_cards_shortcode($atts) {
     }
 
     .quantity-display {
-        font-size: 1.5rem;
+        font-size: 14px;
         font-weight: 600;
         color: #82897F;
         min-width: 40px;
@@ -207,6 +207,7 @@ function newsaiige_gift_cards_shortcode($atts) {
         cursor: pointer;
         transition: all 0.3s ease;
         background: white;
+        font-size: 14px;
     }
 
     .recipient-option.active {
@@ -251,7 +252,8 @@ function newsaiige_gift_cards_shortcode($atts) {
         cursor: pointer;
         transition: all 0.3s ease;
         background: white;
-        font-weight: 600;
+        font-weight: 400;
+        font-size: 14px;
     }
 
     .delivery-option.active {
@@ -315,15 +317,14 @@ function newsaiige_gift_cards_shortcode($atts) {
     .gift-card-submit {
         background: linear-gradient(45deg, #82897F, #9EA49D);
         color: white;
-        padding: 18px 50px;
+        padding: 9px 50px;
         border: none;
         border-radius: 50px;
         font-family: 'Montserrat', sans-serif;
         font-weight: 700;
-        font-size: 1.2rem;
+        font-size: 14px;
         cursor: pointer;
         transition: all 0.3s ease;
-        text-transform: uppercase;
         letter-spacing: 1px;
         position: relative;
         overflow: hidden;
@@ -502,7 +503,7 @@ function newsaiige_gift_cards_shortcode($atts) {
                                             id="recipientEmail">
                                 </div>
                                 <div class="form-group">
-                                    <label class="form-label">Nom et Prénom du destinataire de l'e-carte cadeau</label>
+                                    <label class="form-label">Nom et prénom du destinataire de l'e-carte cadeau</label>
                                     <input type="text" 
                                             name="recipient_name" 
                                             class="form-input" 
@@ -536,7 +537,7 @@ function newsaiige_gift_cards_shortcode($atts) {
                                 📧 Livraison par email
                             </div>
                             <div class="delivery-option" data-type="physical">
-                                📮 Livraison physique
+                                📮 Livraison physique (2€50 de frais de port)
                             </div>
                         </div>
                         
@@ -610,7 +611,7 @@ function newsaiige_gift_cards_shortcode($atts) {
             <!-- Section Date de livraison -->
             <div class="form-section">
                 <div class="form-group full-width">
-                    <label class="form-label">Choisissez la date de livraison.</label>
+                    <label class="form-label">Choisissez la date de livraison</label>
                     <input type="date" 
                             name="delivery_date" 
                             class="form-input" 
@@ -736,12 +737,16 @@ function newsaiige_gift_cards_shortcode($atts) {
         function updateTotalPrice() {
             const amount = parseFloat(amountInput.value) || 0;
             const quantity = parseInt(quantityInput.value) || 1;
-            const shippingCost = deliveryType === 'physical' ? 5 : 0;
+            const shippingCost = deliveryType === 'physical' ? 2.50 : 0;
             const total = (amount * quantity) + shippingCost;
             
             // Mettre à jour le texte du bouton avec le prix total
             if (amount > 0) {
-                submitText.textContent = `Acheter (${total.toFixed(0)}€)`;
+                if (shippingCost > 0) {
+                    submitText.textContent = `Acheter ${total.toFixed(2)}€ (${(amount * quantity).toFixed(2)}€ + ${shippingCost.toFixed(2)}€ port)`;
+                } else {
+                    submitText.textContent = `Acheter ${total.toFixed(2)}€`;
+                }
             } else {
                 submitText.textContent = 'Acheter';
             }
@@ -785,7 +790,7 @@ function newsaiige_gift_cards_shortcode($atts) {
                 // Afficher/masquer les champs de livraison physique
                 if (deliveryType === 'physical') {
                     deliveryFields.classList.add('active');
-                    deliveryNote.textContent = 'Livraison physique sous 3-5 jours ouvrés';
+                    deliveryNote.textContent = 'Livraison physique sous 3-5 jours ouvrés (+2,50€)';
                     
                     // Rendre les champs de livraison obligatoires
                     document.getElementById('deliveryAddress').required = true;
@@ -1041,7 +1046,7 @@ function newsaiige_process_gift_card() {
     }
     
     // Calculer le montant total avec frais de port
-    $shipping_cost = ($_POST['delivery_type'] === 'physical') ? 5.00 : 0.00;
+    $shipping_cost = ($_POST['delivery_type'] === 'physical') ? 2.50 : 0.00;
     $total_amount = ($amount * $quantity) + $shipping_cost;
     
     // Préparer les données

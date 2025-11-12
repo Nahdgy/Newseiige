@@ -35,7 +35,7 @@ function newsaiige_products_grid_shortcode($atts) {
     }
 
     .sidebar-title {
-        font-size: 1.3rem;
+        font-size: 18px;
         font-weight: 700;
         color: #82897F;
         margin-bottom: 25px;
@@ -61,12 +61,19 @@ function newsaiige_products_grid_shortcode($atts) {
         transition: all 0.3s ease;
         font-weight: 500;
         position: relative;
+        padding: 5px;
+        text-transform: lowercase !important;
+    }
+
+    .filter-link:first-letter {
+        text-transform: uppercase !important;
     }
 
     .filter-link:hover,
     .filter-link.active {
         font-weight: 700;
         transform: translateX(10px);
+        color: #82897F !important;
     }
 
     .filter-link::before {
@@ -90,7 +97,7 @@ function newsaiige_products_grid_shortcode($atts) {
     }
 
     .products-title {
-        font-size: 2.5rem;
+        font-size: 28px;
         font-weight: 700;
         color: #82897F;
         margin: 0 0 20px 0;
@@ -99,7 +106,7 @@ function newsaiige_products_grid_shortcode($atts) {
     }
 
     .products-subtitle {
-        font-size: 1.2rem;
+        font-size: 14px;
         color: #666;
         font-weight: 400;
         line-height: 1.6;
@@ -122,17 +129,11 @@ function newsaiige_products_grid_shortcode($atts) {
         position: relative;
         transition: all 0.4s ease;
         border: 1px solid rgba(255, 255, 255, 0.3);
-        box-shadow: 
-            0 20px 40px rgba(0, 0, 0, 0.1),
-            inset 0 1px 0 rgba(255, 255, 255, 0.3);
         cursor: pointer;
     }
 
     .product-card:hover {
         transform: translateY(-15px) scale(1.02);
-        box-shadow: 
-            0 30px 60px rgba(0, 0, 0, 0.2),
-            inset 0 1px 0 rgba(255, 255, 255, 0.4);
     }
 
     .products-image {
@@ -148,19 +149,23 @@ function newsaiige_products_grid_shortcode($atts) {
         position: absolute;
         top: 20px;
         left: 20px;
-        background: rgba(255, 255, 255, 0.9);
+        background: rgba(255, 255, 255, 20%);
         backdrop-filter: blur(10px);
         -webkit-backdrop-filter: blur(10px);
-        color: #82897F;
+        color: #ffffffff;
         padding: 8px 16px;
         border-radius: 20px;
         font-size: 0.9rem;
-        font-weight: 600;
+        font-weight: 400;
         text-transform: uppercase;
         letter-spacing: 0.5px;
         border: 1px solid rgba(255, 255, 255, 0.3);
+        text-transform: lowercase !important;
     }
 
+    .product-category-badge:first-letter {
+        text-transform: uppercase !important;
+    }
     .cart-status-icon {
         position: absolute;
         top: 20px;
@@ -199,16 +204,16 @@ function newsaiige_products_grid_shortcode($atts) {
     }
 
     .product-title {
-        font-size: 1.3rem;
-        font-weight: 700;
+        font-size: 14px;
+        font-weight: 600;
         color: #333;
         margin: 0 0 10px 0;
         line-height: 1.4;
     }
 
     .product-price {
-        font-size: 1.5rem;
-        font-weight: 600;
+        font-size: 14px;
+        font-weight: 400;
         color: #000000ff;
         margin: 0;
     }
@@ -326,12 +331,12 @@ function newsaiige_products_grid_shortcode($atts) {
     <div class="newsaiige-products-section">
         <div class="products-header">
             <h2 class="products-title">E-shop</h2>
-            <p class="products-subtitle">Vous les adorez ! Découvrez nos produits best-sellers</p>
+            <p class="products-subtitle">Vous les adorez ! Découvrez nos produits best-sellers.</p>
         </div>
         <div class="products-container">
             <!-- SIDEBAR FILTRES -->
             <div class="products-sidebar">
-                <h3 class="sidebar-title">Notre Sélection</h3>
+                <h3 class="sidebar-title">Notre sélection</h3>
                 <ul class="filter-categories">
                     <li class="filter-category">
                         <a href="#" class="filter-link active" data-category="all">Tout</a>
@@ -365,16 +370,16 @@ function newsaiige_products_grid_shortcode($atts) {
                     } else {
                         // Catégories par défaut si aucune catégorie WooCommerce trouvée
                         echo '<li class="filter-category">
-                            <a href="#" class="filter-link" data-category="les-huiles">Les Huiles</a>
+                            <a href="#" class="filter-link" data-category="les-huiles">les huiles</a>
                         </li>
                         <li class="filter-category">
-                            <a href="#" class="filter-link" data-category="les-outils">Les Outils</a>
+                            <a href="#" class="filter-link" data-category="les-outils">les outils</a>
                         </li>
                         <li class="filter-category">
-                            <a href="#" class="filter-link" data-category="le-livre">Le Livre</a>
+                            <a href="#" class="filter-link" data-category="le-livre">le livre</a>
                         </li>
                         <li class="filter-category">
-                            <a href="#" class="filter-link" data-category="e-carte-cadeau">E-Carte Cadeau</a>
+                            <a href="#" class="filter-link" data-category="e-carte-cadeau">e-carte cadeau</a>
                         </li>';
                     }
                     ?>

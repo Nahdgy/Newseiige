@@ -139,27 +139,6 @@
     box-shadow: 0 10px 25px rgba(130, 137, 127, 0.3);
 }
 
-.scroll-indicator {
-    position: absolute;
-    bottom: 30px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 50px;
-    height: 50px;
-    border: 2px solid #82897F;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    animation: bounce 2s infinite;
-}
-
-.scroll-indicator::after {
-    content: '↓';
-    font-size: 20px;
-    color: #82897F;
-}
-
 @keyframes bounce {
     0%, 20%, 50%, 80%, 100% { transform: translateX(-50%) translateY(0); }
     40% { transform: translateX(-50%) translateY(-10px); }
@@ -227,7 +206,7 @@
          data-height-control="true"
          style="--grid-height: 105vh; --card-left-row: 5 / 10; --card-left-align: center; --card-right-row: 5 / 10; --card-right-align: center;">
         <div class="content-card left">
-            <h2>Shoppez votre routine !</h2>
+            <h2>Shoppez votre routine </h2>
             <p>Transformez votre routine bien-être avec notre e-shop spécialisé : des outils et des produits conçus pour sublimer votre corps naturellement, chez vous !</p>
             <a href="https://newsaiige.com/boutique/" class="custom-button">Notre e-shop</a>
         </div>
@@ -242,6 +221,4 @@
     <div class="product-center">
         <img src="http://newsaiige.com/wp-content/uploads/2025/10/huile-corps-newsaiige-e1760451090693.png" alt="L'huile Corps Nacrée NEWSAIIGE - 100ml" class="product-image">
     </div>
-    
-    <div class="scroll-indicator"></div>
 </div>

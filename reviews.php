@@ -73,7 +73,7 @@ function newsaiige_reviews_shortcode($atts) {
     }
 
     .reviews-title {
-        font-size: 2.5rem;
+        font-size: 24px;
         font-weight: 700;
         color: #82897F;
         margin: 0 0 20px 0;
@@ -90,7 +90,7 @@ function newsaiige_reviews_shortcode($atts) {
     }
 
     .rating-score {
-        font-size: 3rem;
+        font-size: 32px;
         font-weight: 800;
         color: #82897F;
     }
@@ -143,7 +143,7 @@ function newsaiige_reviews_shortcode($atts) {
     }
 
     .review-text {
-        font-size: 1.1rem;
+        font-size: 14px;
         line-height: 1.6;
         color: #333;
         font-style: italic;
@@ -155,7 +155,7 @@ function newsaiige_reviews_shortcode($atts) {
         text-align: center;
         color: #82897F;
         font-weight: 600;
-        font-size: 1rem;
+        font-size: 12px;
     }
 
     .carousel-controls {
@@ -167,8 +167,8 @@ function newsaiige_reviews_shortcode($atts) {
     }
 
     .carousel-btn {
-        width: 50px;
-        height: 50px;
+        width: 40px;
+        height: 40px;
         border-radius: 50%;
         background: rgba(130, 137, 127, 0.1);
         border: 2px solid #82897F;
@@ -194,7 +194,7 @@ function newsaiige_reviews_shortcode($atts) {
     }
 
     .carousel-pagination {
-        font-size: 1.2rem;
+        font-size: 14px;
         color: #82897F;
         font-weight: 600;
     }
@@ -207,7 +207,7 @@ function newsaiige_reviews_shortcode($atts) {
         text-decoration: none;
         border-radius: 50px;
         font-weight: 600;
-        font-size: 1.1rem;
+        font-size: 14px;
         transition: all 0.3s ease;
         border: 2px solid #82897F;
         cursor: pointer;
@@ -232,7 +232,7 @@ function newsaiige_reviews_shortcode($atts) {
         display: none;
         justify-content: center;
         align-items: center;
-        z-index: 10000;
+        z-index: 100000;
         backdrop-filter: blur(5px);
     }
 
@@ -406,7 +406,7 @@ function newsaiige_reviews_shortcode($atts) {
 
     <div class="newsaiige-reviews">
         <div class="reviews-header">
-            <h2 class="reviews-title">Elles aiment NewSaiige !</h2>
+            <h2 class="reviews-title">Elles aiment NewSaiige</h2>
             <div class="reviews-rating">
                 <span class="rating-score"><?php echo number_format($stats->average_rating, 1, ',', ''); ?></span>
                 <div class="rating-stars">

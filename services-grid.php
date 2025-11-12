@@ -1,8 +1,8 @@
 <?php
 function newsaiige_services_grid_shortcode($atts) {
     $atts = shortcode_atts(array(
-        'title' => 'Les Soins',
-        'subtitle' => 'Venez passer un moment de détente au sein de notre institut Newsaiige, le 1er institut dédié à la Madérothérapie Corps et Visage'
+        'title' => 'Les soins',
+        'subtitle' => 'Venez passer un moment de détente au sein de notre institut Newsaiige, le 1er institut dédié à la madérothérapie corps et visage.'
     ), $atts);
     
     ob_start();
@@ -10,10 +10,9 @@ function newsaiige_services_grid_shortcode($atts) {
 
     <style>
     .newsaiige-services-section {
-        padding: 80px 20px;
+        padding: 20px 20px;
         font-family: 'Montserrat', sans-serif;
         background: #fff;
-        min-height: 100vh;
     }
 
     .services-container {
@@ -24,23 +23,26 @@ function newsaiige_services_grid_shortcode($atts) {
     /* SECTION TITRE */
     .services-header {
         margin-bottom: 60px;
+        display: flex;
+        flex-direction: column; 
+        gap: 10px;
     }
 
     .services-title {
-        font-size: 3.2rem;
+        font-size: 28px;
         font-weight: 700;
         color: #82897F;
-        margin: 0 0 30px 0;
+        margin: 0 0 0 0;
         text-align: left;
         line-height: 1.2;
     }
 
     .services-subtitle {
-        font-size: 1.1rem;
+        font-size: 14px;
         color: #000;
         font-weight: 400;
         line-height: 1.6;
-        max-width: 600px;
+        max-width: 460px;
         margin: 0;
     }
 
@@ -60,18 +62,17 @@ function newsaiige_services_grid_shortcode($atts) {
         cursor: pointer;
         height: 450px;
         text-decoration: none;
-        color: inherit;
     }
 
     .first-card{
-        background: #A79683;
+        background: #82897F;
         color: #fff;
         font-family: 'Montserrat', sans-serif;
     }
 
     .second-card{
-        background: #E9E2DD;
-        color: #444444;
+        background: #9EA49D;
+        color: #fff;
         font-family: 'Montserrat', sans-serif;
     }
 
@@ -100,14 +101,15 @@ function newsaiige_services_grid_shortcode($atts) {
     }
 
     .service-name {
-        font-size: 1.4rem;
+        font-size: 20px;
         font-weight: 700;
         margin: 0 0 8px 0;
         line-height: 1.3;
+        text-transform: uppercase;
     }
 
     .service-duration-price {
-        font-size: 1.8rem;
+        font-size: 24px;
         font-weight: 700;
         margin: 0 0 15px 0;
         font-style: italic;
@@ -230,36 +232,36 @@ function newsaiige_services_grid_shortcode($atts) {
                 // Services avec leurs informations
                 $services = array(
                     array(
-                        'name' => 'La Madérothérapie',
+                        'name' => 'La madérothérapie',
                         'duration_price' => '50min / 65€',
-                        'description' => 'Le Massage Anti-Cellulite n°1',
+                        'description' => 'Le massage anti-cellulite n°1',
                         'image' => 'http://newsaiige.com/wp-content/uploads/2025/10/maderotherapie.jpg',
                         'url' => 'https://www.planity.com/maderotherapie-newsaiige-83130-la-garde/reservation',
                         'alt' => 'Séance de madérothérapie avec outils en bois',
                         'style' => 'first-card'
                     ),
                     array(
-                        'name' => 'La Madérothérapie Énergétique',
+                        'name' => 'La madérothérapie énergétique',
                         'duration_price' => '50min / 70€',
-                        'description' => 'Le soin drainant et détoxifiant.',
+                        'description' => 'Le soin drainant et détoxifiant',
                         'image' => 'http://newsaiige.com/wp-content/uploads/2025/10/madero_energie.jpg',
                         'url' => 'https://www.planity.com/maderotherapie-newsaiige-83130-la-garde/reservation',
                         'alt' => 'Soin énergétique avec huiles essentielles',
                         'style' => 'second-card'
                     ),
                     array(
-                        'name' => 'La Face Madéro',
+                        'name' => 'La face madéro',
                         'duration_price' => '50min / 65€',
-                        'description' => 'Un visage aux mille éclats !',
+                        'description' => 'Un visage aux mille éclats',
                         'image' => 'http://newsaiige.com/wp-content/uploads/2025/10/face_medero-scaled.jpg',
                         'url' => 'https://www.planity.com/maderotherapie-newsaiige-83130-la-garde/reservation',
                         'alt' => 'Soin du visage avec outils de madérothérapie',
                         'style' => 'first-card'
                     ),
                     array(
-                        'name' => 'La Nutrition Comportementale',
+                        'name' => 'La nutrition comportementale',
                         'duration_price' => '50min / 70€',
-                        'description' => 'Une approche sans régime !',
+                        'description' => 'Une approche sans régime',
                         'image' => 'http://newsaiige.com/wp-content/uploads/2025/10/nutrition_comportementale.jpg',
                         'url' => 'https://www.planity.com/maderotherapie-newsaiige-83130-la-garde/reservation',
                         'alt' => 'Consultation en nutrition comportementale',
