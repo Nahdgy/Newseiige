@@ -132,7 +132,6 @@ function newsaiige_reset_password_form_shortcode($atts) {
         font-weight: 700;
         color: #82897F;
         letter-spacing: 3px;
-        margin-bottom: 20px;
         text-transform: uppercase;
     }
 
@@ -215,17 +214,16 @@ function newsaiige_reset_password_form_shortcode($atts) {
 
     .newsaiige-submit-btn {
         width: 100%;
-        padding: 20px;
+        padding: 10px;
         background: #82897F;
         color: white;
         border: none;
         border-radius: 50px;
         font-family: 'Montserrat', sans-serif;
         font-weight: 600;
-        font-size: 18px;
+        font-size: 14px;
         cursor: pointer;
         transition: all 0.3s ease;
-        text-transform: uppercase;
         letter-spacing: 1px;
     }
 
@@ -285,9 +283,6 @@ function newsaiige_reset_password_form_shortcode($atts) {
     }
 
     .newsaiige-return-link {
-        position: absolute;
-        top: 20px;
-        right: 25px;
         color: #82897F;
         text-decoration: none;
         font-weight: 500;
@@ -348,6 +343,7 @@ function newsaiige_reset_password_form_shortcode($atts) {
             display: flex;
             justify-content: space-between;
             margin-bottom: 30px;
+            align-items: center;
         }
     }
 

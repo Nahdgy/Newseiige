@@ -29,7 +29,6 @@ function newsaiige_mobile_product_carousel_shortcode($atts) {
         font-weight: 700;
         color: #82897F;
         margin: 0 0 15px 0;
-        text-transform: uppercase;
         letter-spacing: 1.5px;
     }
 
@@ -91,14 +90,13 @@ function newsaiige_mobile_product_carousel_shortcode($atts) {
         position: absolute;
         top: 15px;
         left: 15px;
-        background: rgba(255, 255, 255, 0.95);
+        background: rgba(255, 255, 255, 25%);
         backdrop-filter: blur(10px);
-        color: #82897F;
+        color: #fff;
         padding: 6px 12px;
         border-radius: 15px;
         font-size: 0.8rem;
         font-weight: 600;
-        text-transform: uppercase;
         letter-spacing: 0.5px;
         border: 1px solid rgba(255, 255, 255, 0.3);
     }
@@ -203,7 +201,6 @@ function newsaiige_mobile_product_carousel_shortcode($atts) {
         display: flex;
         gap: 8px;
         justify-content: center;
-        margin-top: 20px;
     }
 
     .mobile-pagination-dot {
@@ -239,7 +236,6 @@ function newsaiige_mobile_product_carousel_shortcode($atts) {
         text-decoration: none;
         font-weight: 700;
         font-size: 1.1rem;
-        text-transform: uppercase;
         letter-spacing: 1px;
         transition: all 0.3s ease;
         box-shadow: 0 10px 25px rgba(130, 137, 127, 0.3);
@@ -329,7 +325,7 @@ function newsaiige_mobile_product_carousel_shortcode($atts) {
 
     <div class="newsaiige-mobile-products">
         <div class="mobile-products-header">
-            <h2 class="mobile-products-title">Nos Produits</h2>
+            <h2 class="mobile-products-title">Nos produits</h2>
             <p class="mobile-products-subtitle">Découvrez notre sélection coup de cœur</p>
         </div>
 
@@ -436,7 +432,7 @@ function newsaiige_mobile_product_carousel_shortcode($atts) {
 
         <div class="mobile-discover-button">
             <a href="https://newsaiige.com/boutique/" class="mobile-discover-btn">
-                Découvrir la Boutique
+                Découvrir la boutique
             </a>
         </div>
     </div>
@@ -507,23 +503,44 @@ function newsaiige_mobile_product_carousel_shortcode($atts) {
             dot.addEventListener('click', () => goToSlide(index));
         });
 
-        // Support tactile
+        // Support tactile amélioré
         let startX = 0;
+        let startY = 0;
         let endX = 0;
         let isDragging = false;
+        let isHorizontalSwipe = false;
 
         carouselTrack.addEventListener('touchstart', function(e) {
             startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
             isDragging = true;
+            isHorizontalSwipe = false;
         });
 
         carouselTrack.addEventListener('touchmove', function(e) {
             if (!isDragging) return;
-            e.preventDefault();
+            
+            const currentX = e.touches[0].clientX;
+            const currentY = e.touches[0].clientY;
+            const diffX = Math.abs(currentX - startX);
+            const diffY = Math.abs(currentY - startY);
+            
+            // Déterminer si c'est un swipe horizontal ou vertical
+            if (diffX > 10 || diffY > 10) {
+                if (diffX > diffY && diffX > 20) {
+                    // Mouvement horizontal détecté - bloquer le scroll vertical
+                    isHorizontalSwipe = true;
+                    e.preventDefault();
+                } else if (diffY > diffX) {
+                    // Mouvement vertical détecté - arrêter la détection du swipe horizontal
+                    isDragging = false;
+                    isHorizontalSwipe = false;
+                }
+            }
         });
 
         carouselTrack.addEventListener('touchend', function(e) {
-            if (!isDragging) return;
+            if (!isDragging || !isHorizontalSwipe) return;
             
             endX = e.changedTouches[0].clientX;
             const diffX = startX - endX;
@@ -537,6 +554,7 @@ function newsaiige_mobile_product_carousel_shortcode($atts) {
             }
             
             isDragging = false;
+            isHorizontalSwipe = false;
         });
 
         // Gestion des boutons panier

@@ -53,10 +53,10 @@ Système complet de cartes cadeaux pour WordPress avec :
 Ajouter dans `functions.php` de votre thème :
 
 ```php
-// Inclure le système de cartes cadeaux
-require_once get_template_directory() . '/newsaiige-gift-cards.php';
-require_once get_template_directory() . '/gift-cards-admin.php';
-require_once get_template_directory() . '/gift-card-validator.php';
+// Inclure le système de cartes cadeaux depuis les plugins
+require_once WP_PLUGIN_DIR . '/newsaiige-gift-cards/newsaiige-gift-cards.php';
+require_once WP_PLUGIN_DIR . '/newsaiige-gift-cards/gift-cards-admin.php';
+require_once WP_PLUGIN_DIR . '/newsaiige-gift-cards/gift-card-validator.php';
 
 // Activer le système
 add_action('after_setup_theme', function() {

@@ -130,7 +130,7 @@ function newsaiige_services_grid_shortcode($atts) {
 
     .discover-button {
         display: inline-block;
-        background: #000;
+        background: #82897F;
         color: white;
         padding: 15px 40px;
         border-radius: 50px;
@@ -143,7 +143,7 @@ function newsaiige_services_grid_shortcode($atts) {
     }
 
     .discover-button:hover {
-        background: #333;
+        background: #9EA49D;
         transform: translateY(-2px);
         box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
         text-decoration: none;
@@ -171,6 +171,13 @@ function newsaiige_services_grid_shortcode($atts) {
         .services-title {
             font-size: 2.5rem;
         }
+        .service-name {
+            font-size: 14px;
+        }
+        .service-duration-price {
+            font-size: 12px;
+            margin: 0 0 6px 0;
+        }
     }
 
     @media (max-width: 600px) {
@@ -195,6 +202,13 @@ function newsaiige_services_grid_shortcode($atts) {
 
         .newsaiige-services-section {
             padding: 40px 15px;
+        }
+        .service-name {
+            font-size: 14px;
+        }
+        .service-duration-price {
+            font-size: 12px;
+            margin: 0 0 6px 0;
         }
     }
 

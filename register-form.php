@@ -96,7 +96,6 @@ function newsaiige_register_form_shortcode($atts) {
         font-weight: 700;
         color: #82897F;
         letter-spacing: 3px;
-        margin-bottom: 20px;
         text-transform: uppercase;
     }
 
@@ -312,6 +311,7 @@ function newsaiige_register_form_shortcode($atts) {
         display: flex;
         justify-content: space-between;
         margin-bottom: 30px;
+        align-items: center;
     }
 
     /* Responsive */
@@ -362,7 +362,7 @@ function newsaiige_register_form_shortcode($atts) {
         </div>
         
         <div class="newsaiige-auth-header">
-            <h2 class="newsaiige-auth-title">S'INSCRIRE</h2>
+            <h2 class="newsaiige-auth-title">S'inscrire</h2>
             <p class="newsaiige-auth-subtitle">
                 Déjà membre ? <a href="<?php echo esc_url($atts['login_url']); ?>">Se connecter</a>
             </p>

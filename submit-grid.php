@@ -137,7 +137,7 @@ function newsaiige_submit_grid_shortcode($atts) {
 
     .discover-button {
         display: inline-block;
-        background: #000;
+        background: #82897F;
         color: white;
         padding: 15px 40px;
         border-radius: 50px;
@@ -150,7 +150,7 @@ function newsaiige_submit_grid_shortcode($atts) {
     }
 
     .discover-button:hover {
-        background: #333;
+        background: #9EA49D;
         transform: translateY(-2px);
         box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
         text-decoration: none;
@@ -202,7 +202,7 @@ function newsaiige_submit_grid_shortcode($atts) {
         }
 
         .service-name {
-            font-size: 1.1rem;
+            font-size: 14px;
             font-weight: 700;
             margin: 0 0 5px 0;
             line-height: 1.2;
@@ -268,12 +268,12 @@ function newsaiige_submit_grid_shortcode($atts) {
         }
 
         .service-name {
-            font-size: 1rem;
+            font-size: 14px;
             margin: 0 0 4px 0;
         }
 
         .service-duration-price {
-            font-size: 1.2rem;
+            font-size: 12px;
             margin: 0 0 6px 0;
         }
 
