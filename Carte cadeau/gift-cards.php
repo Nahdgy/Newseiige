@@ -273,7 +273,9 @@ function newsaiige_gift_cards_shortcode($atts) {
     }
 
     .delivery-fields.active {
-        display: block;
+        display: flex;
+        flex-direction: column;
+        gap: 25px;
     }
 
     .delivery-info {
@@ -611,7 +613,7 @@ function newsaiige_gift_cards_shortcode($atts) {
             <!-- Section Date de livraison -->
             <div class="form-section">
                 <div class="form-group full-width">
-                    <label class="form-label">Choisissez la date de livraison</label>
+                    <label class="form-label">Choisissez la date d'expédition</label>
                     <input type="date" 
                             name="delivery_date" 
                             class="form-input" 
