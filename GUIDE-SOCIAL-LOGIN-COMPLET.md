@@ -32,8 +32,8 @@ Pour faire fonctionner les connexions sociales, vous avez besoin de :
    ```
 
 ### 1.2 Récupérer les clés
-- **Client ID** : Ressemble à `123456789-abc123.apps.googleusercontent.com` (749411359639-vv1ccrjpr27kd1jl2q3cubk7m7v4a1og.apps.googleusercontent.com)
-- **Client Secret** : Une chaîne aléatoire (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)
+- **Client ID** : Ressemble à `123456789-abc123.apps.googleusercontent.com` 
+- **Client Secret** : Une chaîne aléatoire
 
 ---
 
