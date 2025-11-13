@@ -128,7 +128,7 @@ function newsaiige_social_config_page() {
                                        name="google_client_id" 
                                        value="<?php echo esc_attr($google_client_id); ?>" 
                                        class="regular-text" 
-                                       placeholder="749411359639-vv1ccrjpr27kd1jl2q3cubk7m7v4a1og.apps.googleusercontent.com" />
+                                       placeholder="Votre client ID" />
                                 <p class="description">Récupérable sur Google Cloud Console > Identifiants</p>
                             </td>
                         </tr>
@@ -142,7 +142,7 @@ function newsaiige_social_config_page() {
                                        name="google_client_secret" 
                                        value="<?php echo esc_attr($google_client_secret); ?>" 
                                        class="regular-text" 
-                                       placeholder="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" />
+                                       placeholder="Votre secret key" />
                                 <p class="description">Clé secrète de votre application Google OAuth</p>
                             </td>
                         </tr>
