@@ -1,0 +1,419 @@
+<?php
+/**
+ * Système de fidélité NewSaiige - Version corrigée et sécurisée
+ * Évite les conflits WordPress et WooCommerce
+ */
+
+// Empêcher l'accès direct
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+/**
+ * Classe principale du système de fidélité - Version sécurisée
+ */
+class NewsaiigeLoyaltySystemSafe {
+    
+    private $points_table;
+    private $tiers_table;
+    private $vouchers_table;
+    private $user_tiers_table;
+    private $settings_table;
+    private $conversion_rules_table;
+    private static $instance = null;
+    
+    /**
+     * Instance unique (Singleton)
+     */
+    public static function get_instance() {
+        if (null === self::$instance) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+    
+    /**
+     * Constructeur privé (Singleton)
+     */
+    private function __construct() {
+        global $wpdb;
+        
+        // Initialiser les noms de tables seulement si WordPress est chargé
+        if (isset($wpdb) && $wpdb instanceof wpdb) {
+            $this->points_table = $wpdb->prefix . 'newsaiige_loyalty_points';
+            $this->tiers_table = $wpdb->prefix . 'newsaiige_loyalty_tiers';
+            $this->vouchers_table = $wpdb->prefix . 'newsaiige_loyalty_vouchers';
+            $this->user_tiers_table = $wpdb->prefix . 'newsaiige_loyalty_user_tiers';
+            $this->settings_table = $wpdb->prefix . 'newsaiige_loyalty_settings';
+            $this->conversion_rules_table = $wpdb->prefix . 'newsaiige_loyalty_conversion_rules';
+            
+            // Initialiser les hooks de manière sécurisée
+            $this->init_safe_hooks();
+        }
+    }
+    
+    /**
+     * Initialiser les hooks de manière sécurisée
+     */
+    private function init_safe_hooks() {
+        // Hooks WordPress sécurisés uniquement
+        add_action('wp_ajax_loyalty_get_user_stats', array($this, 'ajax_get_user_stats'));
+        add_action('wp_ajax_loyalty_convert_points', array($this, 'ajax_convert_points'));
+        
+        // Hook pour les tâches quotidiennes (sécurisé)
+        add_action('newsaiige_daily_birthday_check', array($this, 'check_user_birthdays'));
+        add_action('newsaiige_daily_cleanup', array($this, 'cleanup_expired_data'));
+        
+        // WooCommerce hooks - SEULEMENT si WooCommerce est disponible et qu'on n'est pas en conflit
+        if (class_exists('WooCommerce') && !$this->is_processing_wc_action()) {
+            add_action('woocommerce_order_status_completed', array($this, 'process_order_points'), 10, 1);
+        }
+    }
+    
+    /**
+     * Vérifier si on est déjà en train de traiter une action WooCommerce (éviter les boucles)
+     */
+    private function is_processing_wc_action() {
+        return defined('NEWSAIIGE_PROCESSING_WC') || did_action('woocommerce_cart_calculate_fees') > 0;
+    }
+    
+    /**
+     * Vérifier qu'une table existe avant de l'utiliser
+     */
+    private function table_exists($table_name) {
+        global $wpdb;
+        
+        if (!isset($wpdb)) return false;
+        
+        $table_exists = $wpdb->get_var($wpdb->prepare(
+            "SHOW TABLES LIKE %s", 
+            $table_name
+        ));
+        
+        return $table_exists === $table_name;
+    }
+    
+    /**
+     * Obtenir une configuration - Version sécurisée
+     */
+    public function get_setting($key, $default = '') {
+        if (!$this->table_exists($this->settings_table)) {
+            return $default;
+        }
+        
+        global $wpdb;
+        
+        $result = $wpdb->get_var($wpdb->prepare(
+            "SELECT setting_value FROM {$this->settings_table} WHERE setting_key = %s",
+            $key
+        ));
+        
+        return $result !== null ? $result : $default;
+    }
+    
+    /**
+     * Ajouter des points - Version sécurisée
+     */
+    public function add_points($user_id, $points, $order_id = null, $action_type = 'manual', $description = '') {
+        if (!$this->table_exists($this->points_table) || $points <= 0) {
+            return false;
+        }
+        
+        global $wpdb;
+        
+        // Calculer l'expiration (6 mois par défaut)
+        $expiry_days = intval($this->get_setting('points_expiry_days', 183));
+        $expires_at = date('Y-m-d H:i:s', strtotime("+{$expiry_days} days"));
+        
+        $result = $wpdb->insert(
+            $this->points_table,
+            array(
+                'user_id' => $user_id,
+                'points_earned' => $points,
+                'points_available' => $points,
+                'order_id' => $order_id,
+                'action_type' => $action_type,
+                'description' => $description,
+                'expires_at' => $expires_at,
+                'is_active' => 1
+            ),
+            array('%d', '%d', '%d', '%d', '%s', '%s', '%s', '%d')
+        );
+        
+        if ($result) {
+            // Vérifier si l'utilisateur mérite une promotion de palier
+            $this->check_tier_upgrade($user_id);
+            
+            // Hook pour les actions personnalisées
+            do_action('newsaiige_points_added', $user_id, $points, $order_id);
+        }
+        
+        return $result !== false;
+    }
+    
+    /**
+     * Obtenir les points disponibles d'un utilisateur - Version sécurisée
+     */
+    public function get_user_points($user_id) {
+        if (!$this->table_exists($this->points_table)) {
+            return 0;
+        }
+        
+        global $wpdb;
+        
+        $points = $wpdb->get_var($wpdb->prepare(
+            "SELECT SUM(points_available) 
+             FROM {$this->points_table} 
+             WHERE user_id = %d 
+             AND is_active = 1 
+             AND (expires_at IS NULL OR expires_at > NOW())",
+            $user_id
+        ));
+        
+        return intval($points);
+    }
+    
+    /**
+     * Obtenir le total des points gagnés (à vie) - Version sécurisée
+     */
+    public function get_user_lifetime_points($user_id) {
+        if (!$this->table_exists($this->points_table)) {
+            return 0;
+        }
+        
+        global $wpdb;
+        
+        $points = $wpdb->get_var($wpdb->prepare(
+            "SELECT SUM(points_earned) FROM {$this->points_table} WHERE user_id = %d",
+            $user_id
+        ));
+        
+        return intval($points);
+    }
+    
+    /**
+     * Traiter les points d'une commande - Version sécurisée
+     */
+    public function process_order_points($order_id) {
+        // Éviter les traitements multiples
+        if (get_post_meta($order_id, '_newsaiige_loyalty_processed', true)) {
+            return;
+        }
+        
+        // Marquer comme en cours de traitement
+        define('NEWSAIIGE_PROCESSING_WC', true);
+        
+        $order = wc_get_order($order_id);
+        if (!$order) return;
+        
+        $user_id = $order->get_user_id();
+        if (!$user_id) return;
+        
+        // Vérifier si l'utilisateur a un abonnement actif (si requis)
+        if ($this->get_setting('subscription_required', '1') === '1') {
+            if (!$this->has_active_subscription($user_id)) {
+                return;
+            }
+        }
+        
+        // Calculer les points (1 point par euro dépensé par défaut)
+        $order_total = $order->get_total();
+        $points_per_euro = floatval($this->get_setting('points_per_euro', 1));
+        $points_earned = floor($order_total * $points_per_euro);
+        
+        if ($points_earned > 0) {
+            $description = sprintf('Points gagnés pour la commande #%s', $order_id);
+            
+            if ($this->add_points($user_id, $points_earned, $order_id, 'order', $description)) {
+                // Marquer la commande comme traitée
+                update_post_meta($order_id, '_newsaiige_loyalty_processed', time());
+                
+                // Ajouter une note à la commande
+                $order->add_order_note(
+                    sprintf('Programme de fidélité : %d points ajoutés au compte client.', $points_earned)
+                );
+            }
+        }
+    }
+    
+    /**
+     * Vérifier si un utilisateur a un abonnement actif
+     */
+    public function has_active_subscription($user_id) {
+        $subscription_category = $this->get_setting('subscription_category_slug', 'soins');
+        
+        if (empty($subscription_category)) {
+            return true; // Si pas de catégorie définie, considérer comme valide
+        }
+        
+        // Rechercher les commandes récentes avec des produits de la catégorie soins
+        $recent_orders = wc_get_orders(array(
+            'customer' => $user_id,
+            'status' => 'completed',
+            'date_created' => '>=' . (time() - (365 * 24 * 60 * 60)), // Dernière année
+            'limit' => 10
+        ));
+        
+        foreach ($recent_orders as $order) {
+            foreach ($order->get_items() as $item) {
+                $product = $item->get_product();
+                if ($product && has_term($subscription_category, 'product_cat', $product->get_id())) {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Vérifier les promotions de palier - Version sécurisée
+     */
+    public function check_tier_upgrade($user_id) {
+        if (!$this->table_exists($this->tiers_table) || !$this->table_exists($this->user_tiers_table)) {
+            return false;
+        }
+        
+        $lifetime_points = $this->get_user_lifetime_points($user_id);
+        
+        global $wpdb;
+        
+        // Trouver le palier approprié
+        $new_tier = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM {$this->tiers_table} 
+             WHERE points_required <= %d 
+             AND is_active = 1 
+             ORDER BY points_required DESC 
+             LIMIT 1",
+            $lifetime_points
+        ));
+        
+        if (!$new_tier) return false;
+        
+        // Vérifier le palier actuel
+        $current_tier_id = $wpdb->get_var($wpdb->prepare(
+            "SELECT tier_id FROM {$this->user_tiers_table} 
+             WHERE user_id = %d AND is_current = 1",
+            $user_id
+        ));
+        
+        if ($current_tier_id != $new_tier->id) {
+            // Désactiver l'ancien palier
+            $wpdb->update(
+                $this->user_tiers_table,
+                array('is_current' => 0),
+                array('user_id' => $user_id)
+            );
+            
+            // Activer le nouveau palier
+            $wpdb->insert(
+                $this->user_tiers_table,
+                array(
+                    'user_id' => $user_id,
+                    'tier_id' => $new_tier->id,
+                    'is_current' => 1
+                )
+            );
+            
+            // Hook personnalisé pour la promotion
+            do_action('newsaiige_tier_upgrade', $user_id, $new_tier);
+            
+            return true;
+        }
+        
+        return false;
+    }
+    
+    /**
+     * AJAX pour récupérer les statistiques utilisateur
+     */
+    public function ajax_get_user_stats() {
+        if (!wp_verify_nonce($_POST['nonce'] ?? '', 'newsaiige_loyalty_nonce') || !is_user_logged_in()) {
+            wp_send_json_error('Accès non autorisé');
+        }
+        
+        $user_id = get_current_user_id();
+        
+        $data = array(
+            'points_available' => $this->get_user_points($user_id),
+            'points_lifetime' => $this->get_user_lifetime_points($user_id),
+            'current_tier' => $this->get_user_tier($user_id),
+            'vouchers' => $this->get_user_vouchers($user_id)
+        );
+        
+        wp_send_json_success($data);
+    }
+    
+    /**
+     * AJAX pour convertir des points
+     */
+    public function ajax_convert_points() {
+        if (!wp_verify_nonce($_POST['nonce'] ?? '', 'newsaiige_loyalty_nonce') || !is_user_logged_in()) {
+            wp_send_json_error('Accès non autorisé');
+        }
+        
+        $user_id = get_current_user_id();
+        $points_to_convert = intval($_POST['points'] ?? 0);
+        
+        if ($points_to_convert <= 0) {
+            wp_send_json_error('Nombre de points invalide');
+        }
+        
+        $available_points = $this->get_user_points($user_id);
+        
+        if ($points_to_convert > $available_points) {
+            wp_send_json_error('Points insuffisants');
+        }
+        
+        // Ici on ajouterait la logique de conversion
+        wp_send_json_success('Conversion réussie');
+    }
+    
+    /**
+     * Nettoyer les données expirées - Version sécurisée
+     */
+    public function cleanup_expired_data() {
+        if (!$this->table_exists($this->points_table)) {
+            return;
+        }
+        
+        global $wpdb;
+        
+        // Désactiver les points expirés
+        $wpdb->update(
+            $this->points_table,
+            array('is_active' => 0),
+            array('is_active' => 1),
+            array('%d'),
+            array('%d')
+        );
+        
+        $wpdb->query($wpdb->prepare(
+            "UPDATE {$this->points_table} 
+             SET is_active = 0 
+             WHERE expires_at IS NOT NULL 
+             AND expires_at < NOW() 
+             AND is_active = 1"
+        ));
+    }
+    
+    /**
+     * Méthodes stub pour compatibilité
+     */
+    public function get_user_tier($user_id) { return null; }
+    public function get_user_vouchers($user_id) { return array(); }
+    public function check_user_birthdays() { return true; }
+}
+
+// Initialiser le système de manière sécurisée
+function newsaiige_loyalty_system_init() {
+    return NewsaiigeLoyaltySystemSafe::get_instance();
+}
+
+// Démarrer le système
+add_action('plugins_loaded', 'newsaiige_loyalty_system_init', 20);
+
+// Variable globale pour compatibilité
+global $newsaiige_loyalty;
+$newsaiige_loyalty = NewsaiigeLoyaltySystemSafe::get_instance();
+?>
