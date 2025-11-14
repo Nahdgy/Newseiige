@@ -359,13 +359,383 @@ add_action('init', function() {
         return '<span class="loyalty-points-display">' . number_format($points ?: 0) . ' points</span>';
     });
     
-    // Shortcode principal (basique)
+    // Shortcode principal (interface complète)
     add_shortcode('newsaiige_loyalty', function($atts) {
         if (!is_user_logged_in()) {
-            return '<div class="loyalty-login-required">Veuillez vous connecter pour accéder à votre programme de fidélité.</div>';
+            return '<div class="loyalty-login-required">
+                <h3>🔐 Connexion requise</h3>
+                <p>Veuillez vous connecter pour accéder à votre programme de fidélité.</p>
+                <a href="' . wp_login_url(get_permalink()) . '" class="button">Se connecter</a>
+            </div>';
         }
         
-        return '<div class="loyalty-placeholder">Programme de fidélité en cours de chargement...</div>';
+        return newsaiige_render_loyalty_dashboard();
     });
 });
+
+/**
+ * Fonction pour afficher le dashboard de fidélité complet
+ */
+function newsaiige_render_loyalty_dashboard() {
+    global $wpdb;
+    
+    $user_id = get_current_user_id();
+    if (!$user_id) return '';
+    
+    // Tables
+    $points_table = $wpdb->prefix . 'newsaiige_loyalty_points';
+    $tiers_table = $wpdb->prefix . 'newsaiige_loyalty_tiers';
+    $user_tiers_table = $wpdb->prefix . 'newsaiige_loyalty_user_tiers';
+    
+    // Données utilisateur
+    $points_available = $wpdb->get_var($wpdb->prepare(
+        "SELECT SUM(points_available) FROM $points_table WHERE user_id = %d AND is_active = 1 AND (expires_at IS NULL OR expires_at > NOW())",
+        $user_id
+    )) ?: 0;
+    
+    $points_lifetime = $wpdb->get_var($wpdb->prepare(
+        "SELECT SUM(points_earned) FROM $points_table WHERE user_id = %d",
+        $user_id
+    )) ?: 0;
+    
+    // Palier actuel
+    $current_tier = $wpdb->get_row($wpdb->prepare(
+        "SELECT t.* FROM $tiers_table t 
+         LEFT JOIN $user_tiers_table ut ON t.id = ut.tier_id 
+         WHERE ut.user_id = %d AND ut.is_current = 1 
+         ORDER BY t.tier_order DESC LIMIT 1",
+        $user_id
+    ));
+    
+    // Si pas de palier, prendre le premier disponible
+    if (!$current_tier) {
+        $current_tier = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM $tiers_table WHERE points_required <= %d AND is_active = 1 ORDER BY points_required DESC LIMIT 1",
+            $points_lifetime
+        ));
+    }
+    
+    // Prochain palier
+    $next_tier = $wpdb->get_row($wpdb->prepare(
+        "SELECT * FROM $tiers_table WHERE points_required > %d AND is_active = 1 ORDER BY points_required ASC LIMIT 1",
+        $points_lifetime
+    ));
+    
+    // Historique récent
+    $recent_activity = $wpdb->get_results($wpdb->prepare(
+        "SELECT * FROM $points_table WHERE user_id = %d ORDER BY created_at DESC LIMIT 10",
+        $user_id
+    ));
+    
+    // Points expirant bientôt
+    $expiring_soon = $wpdb->get_results($wpdb->prepare(
+        "SELECT SUM(points_available) as points, expires_at 
+         FROM $points_table 
+         WHERE user_id = %d AND is_active = 1 
+         AND expires_at IS NOT NULL AND expires_at > NOW() AND expires_at <= DATE_ADD(NOW(), INTERVAL 30 DAY)
+         GROUP BY DATE(expires_at) 
+         ORDER BY expires_at ASC",
+        $user_id
+    ));
+    
+    ob_start();
+    ?>
+    
+    <div class="newsaiige-loyalty-dashboard">
+        <style>
+        .newsaiige-loyalty-dashboard {
+            font-family: -apple-system, 'Montserrat', Roboto, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .loyalty-header {
+            text-align: center;
+            background: #82897F;
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+        .loyalty-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+            text-align: center;
+            border-left: 4px solid #82897F;
+        }
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: bold;
+                color: #82897F;
+                margin-bottom: 5px;
+        }
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .tier-progress {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        .tier-current {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .tier-badge {
+            padding: 8px 16px;
+            border-radius: 25px;
+            font-weight: bold;
+            color: white;
+            font-size: 0.9em;
+        }
+        .tier-bronze { background: #CD7F32; }
+        .tier-silver { background: #C0C0C0; }
+        .tier-gold { background: #FFD700; color: #333; }
+        .tier-platinum { background: #E5E4E2; color: #333; }
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: #f0f0f0;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        .progress-fill {
+            height: 100%;
+            background: #82897F;
+            transition: width 0.3s ease;
+        }
+        .loyalty-sections {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 30px;
+        }
+        .activity-section, .actions-section {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+        }
+        .activity-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+        .activity-points {
+            font-weight: bold;
+            color: #28a745;
+        }
+        .activity-points.negative {
+            color: #dc3545;
+        }
+        .loyalty-button {
+            display: inline-block;
+            padding: 12px 25px;
+            background: #82897F;
+            color: white;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: bold;
+            text-align: center;
+            margin: 10px 5px;
+            transition: transform 0.2s ease;
+        }
+        .loyalty-button:hover {
+            transform: translateY(-2px);
+            text-decoration: none;
+            color: white;
+        }
+        .loyalty-button.secondary {
+            background: #6c757d;
+        }
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #ffc107;
+            margin-bottom: 20px;
+        }
+        @media (max-width: 768px) {
+            .loyalty-sections {
+                grid-template-columns: 1fr;
+            }
+            .loyalty-stats {
+                grid-template-columns: 1fr;
+            }
+        }
+        </style>
+        
+        <!-- En-tête -->
+        <div class="loyalty-header">
+            <h2>🎯 Mon Programme de Fidélité</h2>
+            <p>Bienvenue <?php echo esc_html(wp_get_current_user()->display_name); ?> !</p>
+        </div>
+        
+        <!-- Statistiques principales -->
+        <div class="loyalty-stats">
+            <div class="stat-card">
+                <div class="stat-number"><?php echo number_format($points_available); ?></div>
+                <div class="stat-label">Points disponibles</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number"><?php echo number_format($points_lifetime); ?></div>
+                <div class="stat-label">Points à vie</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number"><?php echo $current_tier ? $current_tier->tier_name : 'Aucun'; ?></div>
+                <div class="stat-label">Palier actuel</div>
+            </div>
+        </div>
+        
+        <!-- Progression palier -->
+        <?php if ($next_tier): ?>
+        <div class="tier-progress">
+            <h3>📈 Progression vers <?php echo esc_html($next_tier->tier_name); ?></h3>
+            <div class="tier-current">
+                <span class="tier-badge tier-<?php echo $current_tier ? $current_tier->tier_slug : 'bronze'; ?>">
+                    <?php echo $current_tier ? $current_tier->tier_name : 'Débutant'; ?>
+                </span>
+                <span>→</span>
+                <span class="tier-badge tier-<?php echo $next_tier->tier_slug; ?>">
+                    <?php echo $next_tier->tier_name; ?>
+                </span>
+            </div>
+            
+            <?php 
+            $current_points = $current_tier ? $current_tier->points_required : 0;
+            $next_points = $next_tier->points_required;
+            $progress = max(0, min(100, (($points_lifetime - $current_points) / ($next_points - $current_points)) * 100));
+            $remaining = max(0, $next_points - $points_lifetime);
+            ?>
+            
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: <?php echo $progress; ?>%"></div>
+            </div>
+            
+            <p style="margin: 10px 0 0 0; color: #666; font-size: 0.9em;">
+                <?php if ($remaining > 0): ?>
+                    Plus que <strong><?php echo number_format($remaining); ?> points</strong> pour atteindre le palier <?php echo $next_tier->tier_name; ?> !
+                <?php else: ?>
+                    🎉 Félicitations ! Vous avez atteint le palier <?php echo $next_tier->tier_name; ?> !
+                <?php endif; ?>
+            </p>
+        </div>
+        <?php endif; ?>
+        
+        <!-- Alerte points expirants -->
+        <?php if ($expiring_soon): ?>
+        <div class="alert-warning">
+            <strong>⚠️ Points expirant bientôt !</strong><br>
+            <?php foreach ($expiring_soon as $expiry): ?>
+                <span><?php echo number_format($expiry->points); ?> points expirent le <?php echo date('d/m/Y', strtotime($expiry->expires_at)); ?></span><br>
+            <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
+        
+        <div class="loyalty-sections">
+            <!-- Activité récente -->
+            <div class="activity-section">
+                <h3>📊 Activité récente</h3>
+                <?php if ($recent_activity): ?>
+                    <?php foreach ($recent_activity as $activity): ?>
+                    <div class="activity-item">
+                        <div>
+                            <strong><?php echo esc_html($activity->description ?: $activity->action_type); ?></strong><br>
+                            <small style="color: #666;"><?php echo date('d/m/Y H:i', strtotime($activity->created_at)); ?></small>
+                        </div>
+                        <div class="activity-points <?php echo $activity->points_used > 0 ? 'negative' : ''; ?>">
+                            <?php if ($activity->points_used > 0): ?>
+                                -<?php echo number_format($activity->points_used); ?>
+                            <?php else: ?>
+                                +<?php echo number_format($activity->points_earned); ?>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <p style="color: #666; text-align: center; padding: 20px;">
+                        Aucune activité récente.<br>
+                        Passez votre première commande pour gagner des points !
+                    </p>
+                <?php endif; ?>
+            </div>
+            
+            <!-- Actions rapides -->
+            <div class="actions-section">
+                <h3>🚀 Actions rapides</h3>
+                
+                <?php if ($points_available >= 100): ?>
+                <a href="<?php echo wc_get_cart_url(); ?>" class="loyalty-button">
+                    💰 Utiliser mes points
+                </a>
+                <?php endif; ?>
+                
+                <a href="<?php echo wc_get_page_permalink('shop'); ?>" class="loyalty-button">
+                    🛍️ Continuer mes achats
+                </a>
+                
+                <a href="<?php echo wc_get_account_endpoint_url('orders'); ?>" class="loyalty-button secondary">
+                    📦 Mes commandes
+                </a>
+                
+                <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #f0f0f0;">
+                    <h4>💡 Le saviez-vous ?</h4>
+                    <ul style="font-size: 0.9em; color: #666; line-height: 1.6;">
+                        <li>Gagnez 1 point par euro dépensé</li>
+                        <li>100 points = 1€ de réduction</li>
+                        <li>Les points expirent après 6 mois</li>
+                        <?php if ($current_tier): ?>
+                        <li>Bonus anniversaire : <?php echo $current_tier->birthday_bonus_percentage; ?>% supplémentaire</li>
+                        <?php endif; ?>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+    // Animation de compteur pour les points
+    document.addEventListener('DOMContentLoaded', function() {
+        const numbers = document.querySelectorAll('.stat-number');
+        numbers.forEach(number => {
+            const finalNumber = parseInt(number.textContent.replace(/,/g, ''));
+            let currentNumber = 0;
+            const increment = finalNumber / 50;
+            
+            const timer = setInterval(() => {
+                currentNumber += increment;
+                if (currentNumber >= finalNumber) {
+                    currentNumber = finalNumber;
+                    clearInterval(timer);
+                }
+                number.textContent = Math.floor(currentNumber).toLocaleString();
+            }, 30);
+        });
+    });
+    </script>
+    
+    <?php
+    return ob_get_clean();
+}
 ?>
