@@ -267,25 +267,25 @@ class NewsaiigeLoyaltySystemSafe {
     }
     
     /**
-     * Vérifier les promotions de palier - Version sécurisée
+     * Vérifier les promotions de palier - Version sécurisée (basé sur points disponibles)
      */
     public function check_tier_upgrade($user_id) {
         if (!$this->table_exists($this->tiers_table) || !$this->table_exists($this->user_tiers_table)) {
             return false;
         }
         
-        $lifetime_points = $this->get_user_lifetime_points($user_id);
+        $available_points = $this->get_user_points($user_id);
         
         global $wpdb;
         
-        // Trouver le palier approprié
+        // Trouver le palier approprié basé sur les points disponibles
         $new_tier = $wpdb->get_row($wpdb->prepare(
             "SELECT * FROM {$this->tiers_table} 
              WHERE points_required <= %d 
              AND is_active = 1 
              ORDER BY points_required DESC 
              LIMIT 1",
-            $lifetime_points
+            $available_points
         ));
         
         if (!$new_tier) return false;
