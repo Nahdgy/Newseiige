@@ -380,8 +380,16 @@ function newsaiige_mobile_products_grid_shortcode($atts) {
             'post_type' => 'product',
             'posts_per_page' => intval($atts['limit']),
             'post_status' => 'publish',
-            'orderby' => 'menu_order',
-            'order' => 'ASC'
+            'orderby' => 'date',
+            'order' => 'DESC',
+            'tax_query' => array(
+                array(
+                    'taxonomy' => 'product_cat',
+                    'field' => 'slug',
+                    'terms' => array('e-carte-cadeau', 'soins'),
+                    'operator' => 'NOT IN'
+                )
+            )
         );
 
         $products_query = new WP_Query($args);

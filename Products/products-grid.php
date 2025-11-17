@@ -1,3 +1,4 @@
+<?php
 function newsaiige_products_grid_shortcode($atts) {
     $atts = shortcode_atts(array(
         'limit' => 12,
@@ -362,10 +363,16 @@ function newsaiige_products_grid_shortcode($atts) {
                     }
 
                     if (!is_wp_error($product_categories) && !empty($product_categories)) {
+                        // Filtrer les catégories à exclure
+                        $excluded_categories = array('e-carte-cadeau', 'soins');
+                        
                         foreach ($product_categories as $category) {
-                            echo '<li class="filter-category">
-                                <a href="#" class="filter-link" data-category="' . esc_attr($category->slug) . '">' . esc_html($category->name) . '</a>
-                            </li>';
+                            // Exclure les catégories spécifiques
+                            if (!in_array($category->slug, $excluded_categories)) {
+                                echo '<li class="filter-category">
+                                    <a href="#" class="filter-link" data-category="' . esc_attr($category->slug) . '">' . esc_html($category->name) . '</a>
+                                </li>';
+                            }
                         }
                     } else {
                         // Catégories par défaut si aucune catégorie WooCommerce trouvée
@@ -377,9 +384,6 @@ function newsaiige_products_grid_shortcode($atts) {
                         </li>
                         <li class="filter-category">
                             <a href="#" class="filter-link" data-category="le-livre">le livre</a>
-                        </li>
-                        <li class="filter-category">
-                            <a href="#" class="filter-link" data-category="e-carte-cadeau">e-carte cadeau</a>
                         </li>';
                     }
                     ?>
@@ -395,11 +399,19 @@ function newsaiige_products_grid_shortcode($atts) {
                     $products_found = false;
                     $debug_info = array();
                     
-                    // Méthode 1: Requête WP_Query simple
+                    // Méthode 1: Requête WP_Query simple avec exclusion de catégories
                     $args = array(
                         'post_type' => 'product',
                         'posts_per_page' => 12,
-                        'post_status' => 'publish'
+                        'post_status' => 'publish',
+                        'tax_query' => array(
+                            array(
+                                'taxonomy' => 'product_cat',
+                                'field'    => 'slug',
+                                'terms'    => array('e-carte-cadeau', 'soins'),
+                                'operator' => 'NOT IN',
+                            ),
+                        ),
                     );
 
                     $products_query = new WP_Query($args);
@@ -471,7 +483,6 @@ function newsaiige_products_grid_shortcode($atts) {
                                 <li>WooCommerce actif: ' . (class_exists('WooCommerce') ? 'Oui' : 'Non') . '</li>
                                 <li>WC_Product class: ' . (class_exists('WC_Product') ? 'Oui' : 'Non') . '</li>
                                 <li>Méthode 1 (WP_Query): ' . $debug_info['method1_found'] . ' produits</li>
-                                <li>Méthode 2 (get_posts): ' . $debug_info['method2_found'] . ' produits</li>
                                 <li>Base de données directe: ' . $debug_info['direct_db_count'] . ' produits</li>
                                 <li>Suggestions: Vérifiez que vous avez des produits publiés dans WooCommerce</li>
                             </ul>
@@ -738,3 +749,4 @@ function handle_ajax_add_to_cart() {
         wp_send_json_error('Erreur lors de l\'ajout au panier');
     }
 }
+?>

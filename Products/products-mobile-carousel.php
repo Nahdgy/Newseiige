@@ -338,7 +338,15 @@ function newsaiige_mobile_product_carousel_shortcode($atts) {
                     'posts_per_page' => intval($atts['limit']),
                     'post_status' => 'publish',
                     'orderby' => 'menu_order',
-                    'order' => 'ASC'
+                    'order' => 'ASC',
+                    'tax_query' => array(
+                        array(
+                            'taxonomy' => 'product_cat',
+                            'field' => 'slug',
+                            'terms' => array('e-carte-cadeau', 'soins'),
+                            'operator' => 'NOT IN'
+                        )
+                    )
                 );
 
                 $products_query = new WP_Query($args);

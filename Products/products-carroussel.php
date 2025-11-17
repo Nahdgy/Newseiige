@@ -480,10 +480,16 @@ function newsaiige_product_carroussel_shortcode($atts) {
                     }
 
                     if (!is_wp_error($product_categories) && !empty($product_categories)) {
+                        // Filtrer les catégories à exclure
+                        $excluded_categories = array('e-carte-cadeau', 'soins');
+                        
                         foreach ($product_categories as $category) {
-                            echo '<li class="filter-category">
-                                <a href="#" class="filter-link" data-category="' . esc_attr($category->slug) . '">' . esc_html($category->name) . '</a>
-                            </li>';
+                            // Exclure les catégories spécifiques
+                            if (!in_array($category->slug, $excluded_categories)) {
+                                echo '<li class="filter-category">
+                                    <a href="#" class="filter-link" data-category="' . esc_attr($category->slug) . '">' . esc_html($category->name) . '</a>
+                                </li>';
+                            }
                         }
                     } else {
                         // Catégories par défaut si aucune catégorie WooCommerce trouvée
@@ -495,9 +501,6 @@ function newsaiige_product_carroussel_shortcode($atts) {
                         </li>
                         <li class="filter-category">
                             <a href="#" class="filter-link" data-category="le-livre">le livre</a>
-                        </li>
-                        <li class="filter-category">
-                            <a href="#" class="filter-link" data-category="e-carte-cadeau">e-carte cadeau</a>
                         </li>';
                     }
                     ?>
@@ -517,7 +520,15 @@ function newsaiige_product_carroussel_shortcode($atts) {
                         $args = array(
                             'post_type' => 'product',
                             'posts_per_page' => 12,
-                            'post_status' => 'publish'
+                            'post_status' => 'publish',
+                            'tax_query' => array(
+                                array(
+                                    'taxonomy' => 'product_cat',
+                                    'field' => 'slug',
+                                    'terms' => array('e-carte-cadeau', 'soins'),
+                                    'operator' => 'NOT IN'
+                                )
+                            )
                         );
 
                         $products_query = new WP_Query($args);

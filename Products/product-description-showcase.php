@@ -38,6 +38,14 @@ function newsaiige_product_description_showcase($atts) {
                     'value' => array('catalog', 'visible'),
                     'compare' => 'IN'
                 )
+            ),
+            'tax_query' => array(
+                array(
+                    'taxonomy' => 'product_cat',
+                    'field' => 'slug',
+                    'terms' => array('e-carte-cadeau', 'soins'),
+                    'operator' => 'NOT IN'
+                )
             )
         );
         
