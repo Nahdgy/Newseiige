@@ -379,7 +379,7 @@ function newsaiige_reviews_shortcode($atts) {
 
     @media (max-width: 480px) {
         .carousel-container {
-            padding: 0 15px;
+            padding: 0 0;
         }
 
         .review-card {
