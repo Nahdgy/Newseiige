@@ -274,15 +274,20 @@ function newsaiige_featured_products_showcase($atts) {
         }
         
         .newsaiige-featured-grid {
-            grid-template-columns: 1fr;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
             gap: 30px;
+        }
+        .newsaiige-product-wrapper{
+            min-width: 100%;
         }
         
         .newsaiige-featured-title {
-            font-size: 32px;
+            font-size: 28px;
+            text-align: center;
         }
-        
-        
+
         .newsaiige-product-image-container {
             height: 500px;
         }
@@ -290,7 +295,8 @@ function newsaiige_featured_products_showcase($atts) {
         .newsaiige-product-info {
             padding: 20px;
             flex-direction: column;
-            align-items: flex-start;
+            align-items: center;
+            text-align: center;
             gap: 10px;
         }
     }

@@ -223,6 +223,16 @@ function newsaiige_mobile_products_grid_shortcode($atts) {
         color: #82897F;
         transform: none;
     }
+    .mobile-category-arrow:focus{
+        transform: scale(0.95);
+        background: #82897F;
+        color: white; 
+    }
+    .mobile-category-arrow:disabled{
+        transform: scale(0.95);
+        background: #82897F;
+        color: white;
+    }
 
     /* PAGINATION */
     .mobile-category-dots {
@@ -371,7 +381,8 @@ function newsaiige_mobile_products_grid_shortcode($atts) {
     <div class="newsaiige-mobile-grid">
         <div class="mobile-grid-header">
             <h2 class="mobile-grid-title">E-shop</h2>
-            <p class="mobile-grid-subtitle">Vous les adorez ! Découvrez nos produits best-sellers.</p>
+            <p class="mobile-grid-subtitle">Vous les adorez !</p>
+            <p class="mobile-grid-subtitle">Découvrez nos produits best-sellers.</p>
         </div>
 
         <?php 

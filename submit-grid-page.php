@@ -1,8 +1,8 @@
 function newsaiige_submit_grid_page_shortcode($atts) {
     $atts = shortcode_atts(array(
         'title' => 'Les Abonnements',
-        'subtitle' => 'Un rendez-vous mensuel, une parenthèse d’exception pour votre corps et votre esprit 
-Rejoins le Club NewSaiige !'
+        'subtitle' => 'Un rendez-vous mensuel, une parenthèse d’exception pour votre corps et votre esprit',
+        'subtitle2' => 'Rejoins le Club NewSaiige !'
     ), $atts);
     
     ob_start();
@@ -202,6 +202,7 @@ Rejoins le Club NewSaiige !'
             <div class="services-header">
                 <h2 class="services-title"><?php echo esc_html($atts['title']); ?></h2>
                 <p class="services-subtitle"><?php echo esc_html($atts['subtitle']); ?></p>
+                <p class="services-subtitle"><?php echo esc_html($atts['subtitle2']); ?></p>
             </div>
 
             <div class="services-grid">

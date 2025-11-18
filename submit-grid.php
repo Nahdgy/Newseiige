@@ -2,7 +2,8 @@
 function newsaiige_submit_grid_shortcode($atts) {
     $atts = shortcode_atts(array(
         'title' => 'Les abonnements',
-        'subtitle' => 'Un rendez-vous mensuel, une parenthèse d\'exception pour votre corps et votre esprit. Rejoins le club NewSaiige !'
+        'subtitle' => 'Un rendez-vous mensuel, une parenthèse d\'exception pour votre corps et votre esprit.',
+        'subtitle2' => 'Rejoins le Club NewSaiige !'
     ), $atts);
     
     ob_start();
@@ -13,7 +14,6 @@ function newsaiige_submit_grid_shortcode($atts) {
         padding: 20px 20px;
         font-family: 'Montserrat', sans-serif;
         background: #fff;
-        min-height: 100vh;
     }
 
     .services-container {
@@ -326,6 +326,7 @@ function newsaiige_submit_grid_shortcode($atts) {
             <div class="services-header">
                 <h2 class="services-title"><?php echo esc_html($atts['title']); ?></h2>
                 <p class="services-subtitle-submit"><?php echo esc_html($atts['subtitle']); ?></p>
+                <p class="services-subtitle-submit"><?php echo esc_html($atts['subtitle2']); ?></p>
             </div>
 
             <div class="services-grid">
@@ -367,7 +368,7 @@ function newsaiige_submit_grid_shortcode($atts) {
                         'duration_price' => '205€ / mois',
                         'description' => 'Profite d\'une réduction jusqu\'à 900€/an',
                         'info'=>'(Valable 12 mois)',
-                        'image' => 'http://newsaiige.com/wp-content/uploads/2025/10/maderotherapie.jpg',
+                        'image' => 'http://newsaiige.com/wp-content/uploads/2025/10/IMG_8032-scaled.jpg',
                         'url' => 'https://newsaiige.com/product/soins/',
                         'alt' => 'Consultation en nutrition comportementale',
                         'style' => 'second-card-submit'
@@ -392,17 +393,17 @@ function newsaiige_submit_grid_shortcode($atts) {
                 ?>
             </div>
 
-            <div class="services-cta">
-                <?php 
+            <?php 
                 // Simple vérification si l'URL contient "abonnement"
                 $current_url = $_SERVER['REQUEST_URI'] ?? '';
                 $is_abonnement_page = strpos($current_url, 'abonnement') !== false;
                 
                 if (!$is_abonnement_page): 
                 ?>
-                    <a href="https://newsaiige.com/abonnement/" class="discover-button">Découvrir</a>
-                <?php endif; ?>
-            </div>
+                <div class="services-cta">
+                        <a href="https://newsaiige.com/abonnement/" class="discover-button">Découvrir</a>
+                </div>
+            <?php endif; ?>
         </div>
     </div>
 
