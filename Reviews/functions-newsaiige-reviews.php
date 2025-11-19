@@ -7,8 +7,8 @@
 // ===== SYSTÈME DE BASE =====
 
 // 1. AJAX Handlers pour frontend
-add_action('wp_ajax_submit_newsaiige_review', 'handle_submit_newsaiige_review');
-add_action('wp_ajax_nopriv_submit_newsaiige_review', 'handle_submit_newsaiige_review');
+add_action('wp_ajax_newsaiige_submit_review', 'handle_submit_newsaiige_review');
+add_action('wp_ajax_nopriv_newsaiige_submit_review', 'handle_submit_newsaiige_review');
 add_action('wp_ajax_get_newsaiige_reviews', 'handle_get_newsaiige_reviews');
 add_action('wp_ajax_nopriv_get_newsaiige_reviews', 'handle_get_newsaiige_reviews');
 
@@ -34,6 +34,8 @@ function handle_submit_newsaiige_review() {
     $customer_email = sanitize_email($_POST['customer_email']);
     $rating = intval($_POST['rating']);
     $comment = sanitize_textarea_field($_POST['comment']);
+    $service_id = isset($_POST['service_id']) ? intval($_POST['service_id']) : 0;
+    $service_name = isset($_POST['service_name']) ? sanitize_text_field($_POST['service_name']) : '';
     
     if (empty($customer_name) || empty($comment) || $rating < 1 || $rating > 5) {
         wp_send_json_error('Données invalides');
@@ -61,11 +63,13 @@ function handle_submit_newsaiige_review() {
             'customer_email' => $customer_email,
             'rating' => $rating,
             'comment' => $comment,
+            'service_id' => $service_id,
+            'service_name' => $service_name,
             'status' => 'pending',
             'ip_address' => $_SERVER['REMOTE_ADDR'],
             'user_agent' => $_SERVER['HTTP_USER_AGENT']
         ),
-        array('%s', '%s', '%d', '%s', '%s', '%s', '%s')
+        array('%s', '%s', '%d', '%s', '%d', '%s', '%s', '%s', '%s')
     );
     
     if ($result === false) {
@@ -184,6 +188,7 @@ function newsaiige_reviews_admin_page() {
                     <th>Client</th>
                     <th>Note</th>
                     <th>Commentaire</th>
+                    <th>Prestation</th>
                     <th>Statut</th>
                     <th>Date</th>
                     <th>Actions</th>
@@ -191,7 +196,7 @@ function newsaiige_reviews_admin_page() {
             </thead>
             <tbody>
                 <?php if (empty($reviews)): ?>
-                    <tr><td colspan="6">Aucun avis trouvé.</td></tr>
+                    <tr><td colspan="7">Aucun avis trouvé.</td></tr>
                 <?php else: ?>
                     <?php foreach ($reviews as $review): ?>
                         <tr>
@@ -217,6 +222,15 @@ function newsaiige_reviews_admin_page() {
                                         <a href="#" onclick="document.querySelector('.full-comment-<?php echo $review->id; ?>').style.display='block'; this.style.display='none'; return false;">Voir plus</a>
                                     <?php endif; ?>
                                 </div>
+                            </td>
+                            <td>
+                                <?php if (!empty($review->service_name)): ?>
+                                    <span style="background: #82897F; color: white; padding: 4px 10px; border-radius: 10px; font-size: 11px; font-weight: 600;">
+                                        <?php echo esc_html($review->service_name); ?>
+                                    </span>
+                                <?php else: ?>
+                                    <span style="color: #999;">Avis général</span>
+                                <?php endif; ?>
                             </td>
                             <td>
                                 <span class="status-<?php echo $review->status; ?>" style="padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; 

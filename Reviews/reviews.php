@@ -771,7 +771,7 @@ function newsaiige_reviews_shortcode($atts) {
                 
                 // Utiliser les handlers AJAX existants de functions.php
                 const formData = new FormData();
-                formData.append('action', 'submit_newsaiige_review');
+                formData.append('action', 'newsaiige_submit_review');
                 formData.append('customer_name', this.querySelector('input[name="customer_name"]').value);
                 formData.append('customer_email', this.querySelector('input[name="customer_email"]')?.value || '');
                 formData.append('rating', selectedRating);
