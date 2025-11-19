@@ -521,6 +521,10 @@ function header_personnalise_shortcode() {
         padding: 4px 20px;
         border-radius: 30px;
     }
+
+	.language{
+		display: none;
+	}
 	  
 	  .burger-icon{
 		  height:20px;
@@ -631,6 +635,9 @@ function header_personnalise_shortcode() {
 		    }
 		  .logos-mobile{
             display:none;
+		  }
+		  .language{
+			display: block;
 		  }
 		  .conteneur-reduit {
             width: 90vw;
@@ -1154,6 +1161,9 @@ function header_personnalise_shortcode() {
 						</a>
 					</div>
 				</div>
+				<div class="language" style="z-index:10000">
+					<?php echo do_shortcode('[gtranslate]'); ?>
+				</div>
 				<!-- Drawer vertical à droite -->
 				<div id="drawer-overlay" class="drawer-overlay"></div>
 					
@@ -1194,6 +1204,9 @@ function header_personnalise_shortcode() {
 							<a href="https://newsaiige.com/tarifs/">Tarifs</a>
 							<a href="https://newsaiige.com/blog/">Blog</a>
 							<a href="https://newsaiige.com/carte-cadeau/">Carte cadeau</a>
+							<div class="language-mobile" style="z-index:10000">
+								<?php echo do_shortcode('[gtranslate]'); ?>
+							</div>
 						</nav>
 						<div class="drawer-actions">
 							<a href="https://www.planity.com/maderotherapie-newsaiige-83130-la-garde" class="btn-reservation">Reserver votre soin</a>
