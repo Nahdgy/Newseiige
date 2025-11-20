@@ -53,6 +53,15 @@ function newsaiige_loyalty_admin_menu() {
         'newsaiige-loyalty-settings',
         'newsaiige_loyalty_settings_page'
     );
+    
+    add_submenu_page(
+        'newsaiige-loyalty',
+        'Recalculer les paliers',
+        '🔄 Recalcul Paliers',
+        'manage_options',
+        'newsaiige-loyalty-recalculate',
+        'newsaiige_loyalty_recalculate_page'
+    );
 }
 
 // Page principale d'administration
@@ -1257,4 +1266,258 @@ tr.inactive {
 
 <?php
 }
+
+/**
+ * Page de recalcul des paliers utilisateurs
+ */
+function newsaiige_loyalty_recalculate_page() {
+    global $wpdb, $newsaiige_loyalty;
+    
+    // Traiter le formulaire de recalcul
+    if (isset($_POST['recalculate_tiers']) && check_admin_referer('loyalty_recalculate_tiers')) {
+        $users_updated = 0;
+        $users_checked = 0;
+        
+        // Récupérer tous les utilisateurs avec des points
+        $users_with_points = $wpdb->get_results("
+            SELECT user_id, SUM(points_available) as total_points
+            FROM {$wpdb->prefix}newsaiige_loyalty_points
+            WHERE is_active = 1 AND (expires_at IS NULL OR expires_at > NOW())
+            GROUP BY user_id
+            HAVING total_points > 0
+        ");
+        
+        foreach ($users_with_points as $user_data) {
+            $users_checked++;
+            
+            // Récupérer le palier actuel
+            $current_tier = $wpdb->get_var($wpdb->prepare("
+                SELECT tier_id
+                FROM {$wpdb->prefix}newsaiige_loyalty_user_tiers
+                WHERE user_id = %d AND is_current = 1
+            ", $user_data->user_id));
+            
+            // Vérifier et mettre à jour le palier
+            $newsaiige_loyalty->check_tier_upgrade($user_data->user_id);
+            
+            // Vérifier si le palier a changé
+            $new_tier = $wpdb->get_var($wpdb->prepare("
+                SELECT tier_id
+                FROM {$wpdb->prefix}newsaiige_loyalty_user_tiers
+                WHERE user_id = %d AND is_current = 1
+            ", $user_data->user_id));
+            
+            if ($current_tier != $new_tier) {
+                $users_updated++;
+            }
+        }
+        
+        // Assigner le palier Bronze aux utilisateurs sans palier
+        $users_without_tier = $wpdb->get_results("
+            SELECT DISTINCT u.ID
+            FROM {$wpdb->prefix}users u
+            LEFT JOIN {$wpdb->prefix}newsaiige_loyalty_user_tiers ut ON u.ID = ut.user_id
+            WHERE ut.user_id IS NULL
+            AND u.ID IN (
+                SELECT user_id FROM {$wpdb->prefix}newsaiige_loyalty_points
+            )
+        ");
+        
+        $bronze_tier = $wpdb->get_var("
+            SELECT id FROM {$wpdb->prefix}newsaiige_loyalty_tiers
+            WHERE tier_slug = 'bronze' AND is_active = 1
+            ORDER BY points_required ASC
+            LIMIT 1
+        ");
+        
+        foreach ($users_without_tier as $user) {
+            if ($bronze_tier) {
+                $wpdb->insert(
+                    $wpdb->prefix . 'newsaiige_loyalty_user_tiers',
+                    array(
+                        'user_id' => $user->ID,
+                        'tier_id' => $bronze_tier,
+                        'assigned_at' => current_time('mysql')
+                    ),
+                    array('%d', '%d', '%s')
+                );
+                $users_updated++;
+            }
+        }
+        
+        echo '<div class="notice notice-success"><p>';
+        echo sprintf(
+            'Recalcul terminé ! %d utilisateurs vérifiés, %d paliers mis à jour.',
+            $users_checked,
+            $users_updated
+        );
+        echo '</p></div>';
+    }
+    
+    // Statistiques
+    $total_users = $wpdb->get_var("SELECT COUNT(DISTINCT user_id) FROM {$wpdb->prefix}newsaiige_loyalty_points");
+    $users_with_tier = $wpdb->get_var("SELECT COUNT(DISTINCT user_id) FROM {$wpdb->prefix}newsaiige_loyalty_user_tiers");
+    $users_without_tier = $total_users - $users_with_tier;
+    
+    // Détecter les incohérences
+    $inconsistencies = $wpdb->get_results("
+        SELECT 
+            u.ID as user_id,
+            u.display_name,
+            COALESCE(SUM(p.points_available), 0) as total_points,
+            t.tier_name as current_tier,
+            t.points_required as tier_min_points,
+            (SELECT tier_name FROM {$wpdb->prefix}newsaiige_loyalty_tiers 
+             WHERE points_required <= COALESCE(SUM(p.points_available), 0) AND is_active = 1
+             ORDER BY points_required DESC LIMIT 1) as correct_tier
+        FROM {$wpdb->prefix}users u
+        LEFT JOIN {$wpdb->prefix}newsaiige_loyalty_points p ON u.ID = p.user_id 
+            AND p.is_active = 1 AND (p.expires_at IS NULL OR p.expires_at > NOW())
+        LEFT JOIN {$wpdb->prefix}newsaiige_loyalty_user_tiers ut ON u.ID = ut.user_id AND ut.is_current = 1
+        LEFT JOIN {$wpdb->prefix}newsaiige_loyalty_tiers t ON ut.tier_id = t.id
+        WHERE u.ID IN (SELECT DISTINCT user_id FROM {$wpdb->prefix}newsaiige_loyalty_points)
+        GROUP BY u.ID
+        HAVING (
+            total_points < tier_min_points OR
+            current_tier != correct_tier OR
+            current_tier IS NULL
+        )
+        LIMIT 20
+    ");
+    
+    ?>
+    <div class="wrap">
+        <h1>🔄 Recalcul des paliers de fidélité</h1>
+        
+        <?php if (count($inconsistencies) > 0): ?>
+        <div class="notice notice-warning">
+            <p><strong>⚠️ Attention :</strong> <?php echo count($inconsistencies); ?> utilisateur(s) ont un palier incorrect !</p>
+        </div>
+        <?php endif; ?>
+        
+        <div class="card" style="max-width: 800px;">
+            <h2>📊 Statistiques</h2>
+            <table class="widefat" style="margin-top: 15px;">
+                <tbody>
+                    <tr>
+                        <td><strong>Total utilisateurs avec points :</strong></td>
+                        <td><?php echo number_format($total_users); ?></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Utilisateurs avec palier assigné :</strong></td>
+                        <td><?php echo number_format($users_with_tier); ?></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Utilisateurs sans palier :</strong></td>
+                        <td style="<?php echo $users_without_tier > 0 ? 'color: red; font-weight: bold;' : ''; ?>">
+                            <?php echo number_format($users_without_tier); ?>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>Incohérences détectées :</strong></td>
+                        <td style="<?php echo count($inconsistencies) > 0 ? 'color: red; font-weight: bold;' : ''; ?>">
+                            <?php echo number_format(count($inconsistencies)); ?>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <?php if (count($inconsistencies) > 0): ?>
+        <div class="card" style="max-width: 800px; margin-top: 20px;">
+            <h2>⚠️ Utilisateurs avec incohérences (premiers 20)</h2>
+            <table class="widefat striped">
+                <thead>
+                    <tr>
+                        <th>Utilisateur</th>
+                        <th>Points disponibles</th>
+                        <th>Palier actuel</th>
+                        <th>Palier correct</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($inconsistencies as $user): ?>
+                    <tr>
+                        <td><?php echo esc_html($user->display_name); ?></td>
+                        <td><?php echo number_format($user->total_points); ?></td>
+                        <td style="color: red;">
+                            <?php echo $user->current_tier ? esc_html($user->current_tier) : '<em>Aucun</em>'; ?>
+                        </td>
+                        <td style="color: green; font-weight: bold;">
+                            <?php echo esc_html($user->correct_tier); ?>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+        <?php endif; ?>
+        
+        <div class="card" style="max-width: 800px; margin-top: 20px; background: #fffbf0; border-left: 4px solid #f39c12;">
+            <h2>🔧 Action de recalcul</h2>
+            <p>Cette action va :</p>
+            <ul style="list-style-type: disc; margin-left: 20px;">
+                <li>Recalculer le palier de chaque utilisateur selon ses points disponibles</li>
+                <li>Corriger les paliers incorrects</li>
+                <li>Assigner le palier Bronze aux utilisateurs sans palier</li>
+            </ul>
+            
+            <form method="post" style="margin-top: 20px;">
+                <?php wp_nonce_field('loyalty_recalculate_tiers'); ?>
+                <button type="submit" name="recalculate_tiers" class="button button-primary button-large" 
+                        onclick="return confirm('Êtes-vous sûr de vouloir recalculer tous les paliers ?');">
+                    🔄 Lancer le recalcul
+                </button>
+            </form>
+        </div>
+    </div>
+    <?php
+}
+
+/**
+ * Afficher une notification admin si des incohérences sont détectées
+ */
+add_action('admin_notices', function() {
+    global $wpdb;
+    
+    $screen = get_current_screen();
+    if (!$screen || strpos($screen->id, 'newsaiige-loyalty') === false) {
+        return;
+    }
+    
+    // Compter les incohérences
+    $inconsistencies_count = $wpdb->get_var("
+        SELECT COUNT(*) FROM (
+            SELECT u.ID
+            FROM {$wpdb->prefix}users u
+            LEFT JOIN {$wpdb->prefix}newsaiige_loyalty_points p ON u.ID = p.user_id 
+                AND p.is_active = 1 AND (p.expires_at IS NULL OR p.expires_at > NOW())
+            LEFT JOIN {$wpdb->prefix}newsaiige_loyalty_user_tiers ut ON u.ID = ut.user_id AND ut.is_current = 1
+            LEFT JOIN {$wpdb->prefix}newsaiige_loyalty_tiers t ON ut.tier_id = t.id
+            WHERE u.ID IN (SELECT DISTINCT user_id FROM {$wpdb->prefix}newsaiige_loyalty_points)
+            GROUP BY u.ID
+            HAVING (
+                COALESCE(SUM(p.points_available), 0) < t.points_required OR
+                t.tier_name != (SELECT tier_name FROM {$wpdb->prefix}newsaiige_loyalty_tiers 
+                    WHERE points_required <= COALESCE(SUM(p.points_available), 0) AND is_active = 1
+                    ORDER BY points_required DESC LIMIT 1) OR
+                t.tier_name IS NULL
+            )
+        ) as subquery
+    ");
+    
+    if ($inconsistencies_count > 0) {
+        ?>
+        <div class="notice notice-warning is-dismissible">
+            <p>
+                <strong>⚠️ Système de fidélité :</strong> 
+                <?php echo number_format($inconsistencies_count); ?> utilisateur(s) ont un palier incorrect.
+                <a href="<?php echo admin_url('admin.php?page=newsaiige-loyalty-recalculate'); ?>" class="button button-small">
+                    Recalculer les paliers
+                </a>
+            </p>
+        </div>
+        <?php
+    }
+});
 ?>

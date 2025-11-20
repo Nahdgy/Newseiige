@@ -271,10 +271,13 @@ class NewsaiigeLoyaltySystemSafe {
      */
     public function check_tier_upgrade($user_id) {
         if (!$this->table_exists($this->tiers_table) || !$this->table_exists($this->user_tiers_table)) {
+            error_log("check_tier_upgrade: Tables manquantes pour user {$user_id}");
             return false;
         }
         
         $available_points = $this->get_user_points($user_id);
+        
+        error_log("check_tier_upgrade: User {$user_id} a {$available_points} points disponibles");
         
         global $wpdb;
         
@@ -288,7 +291,12 @@ class NewsaiigeLoyaltySystemSafe {
             $available_points
         ));
         
-        if (!$new_tier) return false;
+        if (!$new_tier) {
+            error_log("check_tier_upgrade: Aucun palier trouvé pour {$available_points} points (user {$user_id})");
+            return false;
+        }
+        
+        error_log("check_tier_upgrade: Palier trouvé pour user {$user_id}: {$new_tier->tier_name} (ID: {$new_tier->id})");
         
         // Vérifier le palier actuel
         $current_tier_id = $wpdb->get_var($wpdb->prepare(
@@ -296,6 +304,8 @@ class NewsaiigeLoyaltySystemSafe {
              WHERE user_id = %d AND is_current = 1",
             $user_id
         ));
+        
+        error_log("check_tier_upgrade: Palier actuel user {$user_id}: " . ($current_tier_id ? $current_tier_id : 'AUCUN'));
         
         if ($current_tier_id != $new_tier->id) {
             // Désactiver l'ancien palier
@@ -306,19 +316,28 @@ class NewsaiigeLoyaltySystemSafe {
             );
             
             // Activer le nouveau palier
-            $wpdb->insert(
+            $result = $wpdb->insert(
                 $this->user_tiers_table,
                 array(
                     'user_id' => $user_id,
                     'tier_id' => $new_tier->id,
-                    'is_current' => 1
+                    'is_current' => 1,
+                    'achieved_at' => current_time('mysql')
                 )
             );
             
-            // Hook personnalisé pour la promotion
-            do_action('newsaiige_tier_upgrade', $user_id, $new_tier);
-            
-            return true;
+            if ($result) {
+                error_log("✅ check_tier_upgrade: User {$user_id} promu à {$new_tier->tier_name} (ID: {$new_tier->id})");
+                
+                // Hook personnalisé pour la promotion
+                do_action('newsaiige_tier_upgrade', $user_id, $new_tier);
+                
+                return true;
+            } else {
+                error_log("❌ check_tier_upgrade: ERREUR lors de l'insertion du palier pour user {$user_id}: " . $wpdb->last_error);
+            }
+        } else {
+            error_log("check_tier_upgrade: User {$user_id} déjà au bon palier ({$new_tier->tier_name})");
         }
         
         return false;
