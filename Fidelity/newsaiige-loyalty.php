@@ -86,7 +86,8 @@ class NewsaiigeLoyaltyPlugin {
         $files_to_load = array(
             'includes/admin.php',
             'includes/system.php', 
-            'includes/woocommerce.php'
+            'includes/woocommerce.php',
+            'includes/birthday-system.php'
         );
         
         foreach ($files_to_load as $file) {

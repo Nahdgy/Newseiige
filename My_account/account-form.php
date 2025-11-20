@@ -20,6 +20,7 @@ function newsaiige_account_form_shortcode($atts) {
         $first_name = sanitize_text_field($_POST['first_name']);
         $last_name = sanitize_text_field($_POST['last_name']);
         $phone = sanitize_text_field($_POST['phone']);
+        $birthday = sanitize_text_field($_POST['birthday']);
         $email = sanitize_email($_POST['email']);
         $new_password = $_POST['new_password'];
         
@@ -59,6 +60,11 @@ function newsaiige_account_form_shortcode($atts) {
                         // Mettre à jour le numéro de téléphone
                         update_user_meta($user_id, 'phone', $phone);
                         
+                        // Mettre à jour la date d'anniversaire
+                        if (!empty($birthday)) {
+                            update_user_meta($user_id, 'birthday', $birthday);
+                        }
+                        
                         $success_message = 'Vos informations ont été mises à jour avec succès.';
                         
                         // Si le mot de passe a été changé, reconnexion automatique
@@ -80,6 +86,7 @@ function newsaiige_account_form_shortcode($atts) {
     $first_name = get_user_meta($user_id, 'first_name', true);
     $last_name = get_user_meta($user_id, 'last_name', true);
     $phone = get_user_meta($user_id, 'phone', true);
+    $birthday = get_user_meta($user_id, 'birthday', true);
     $email = $current_user->user_email;
     
     ob_start();
@@ -325,10 +332,23 @@ function newsaiige_account_form_shortcode($atts) {
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label for="phone">Téléphone</label>
-                        <input type="tel" id="phone" name="phone" class="form-input" 
-                               value="<?php echo esc_attr($phone); ?>" placeholder="06 01 02 03 04">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="phone">Téléphone</label>
+                            <input type="tel" id="phone" name="phone" class="form-input" 
+                                   value="<?php echo esc_attr($phone); ?>" placeholder="06 01 02 03 04">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="birthday">Date d'anniversaire</label>
+                            <input type="date" id="birthday" name="birthday" class="form-input" 
+                                   value="<?php echo esc_attr($birthday); ?>" 
+                                   max="<?php echo date('Y-m-d'); ?>"
+                                   placeholder="JJ/MM/AAAA">
+                            <small style="color: #666; font-size: 0.85rem; margin-top: 5px; display: block;">
+                                📧 Recevez un bon d'achat à votre anniversaire selon votre palier de fidélité
+                            </small>
+                        </div>
                     </div>
                 </div>
 

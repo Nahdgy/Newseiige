@@ -23,6 +23,7 @@ function newsaiige_register_form_shortcode($atts) {
             $full_name = sanitize_text_field($_POST['full_name']);
             $email = sanitize_email($_POST['user_email']);
             $password = $_POST['user_password'];
+            $birthday = isset($_POST['birthday']) ? sanitize_text_field($_POST['birthday']) : '';
             
             // Validation des champs
             if (empty($full_name) || empty($email) || empty($password)) {
@@ -60,6 +61,11 @@ function newsaiige_register_form_shortcode($atts) {
                 if (is_wp_error($user_id)) {
                     $register_error = 'Erreur lors de la création du compte : ' . $user_id->get_error_message();
                 } else {
+                    // Enregistrer la date d'anniversaire
+                    if (!empty($birthday)) {
+                        update_user_meta($user_id, 'birthday', $birthday);
+                    }
+                    
                     // Connexion automatique après inscription
                     wp_set_current_user($user_id);
                     wp_set_auth_cookie($user_id);
@@ -405,6 +411,16 @@ function newsaiige_register_form_shortcode($atts) {
                        placeholder="Mot de passe" 
                        required>
                 <div class="newsaiige-password-strength" id="password-strength"></div>
+            </div>
+
+            <div class="newsaiige-form-group">
+                <input type="date" 
+                       name="birthday" 
+                       class="newsaiige-form-input" 
+                       placeholder="Date d'anniversaire (optionnel)" 
+                       max="<?php echo date('Y-m-d'); ?>"
+                       value="<?php echo isset($_POST['birthday']) ? esc_attr($_POST['birthday']) : ''; ?>">
+                <small style="color: #666; font-size: 12px; margin-top: 5px; display: block; padding-left: 15px;">📧 Recevez un bon d'achat selon votre palier de fidélité</small>
             </div>
 
             <button type="submit" name="newsaiige_register_submit" class="newsaiige-submit-btn" id="register-btn">
