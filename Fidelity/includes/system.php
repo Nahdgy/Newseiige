@@ -246,23 +246,77 @@ class NewsaiigeLoyaltySystemSafe {
             return true; // Si pas de catégorie définie, considérer comme valide
         }
         
-        // Rechercher les commandes récentes avec des produits de la catégorie soins
-        $recent_orders = wc_get_orders(array(
+        // Rechercher les commandes avec des produits de la catégorie soins
+        $orders = wc_get_orders(array(
             'customer' => $user_id,
-            'status' => 'completed',
-            'date_created' => '>=' . (time() - (365 * 24 * 60 * 60)), // Dernière année
-            'limit' => 10
+            'status' => array('completed', 'processing', 'on-hold'),
+            'limit' => -1,
+            'orderby' => 'date',
+            'order' => 'DESC'
         ));
         
-        foreach ($recent_orders as $order) {
+        foreach ($orders as $order) {
+            $order_date = $order->get_date_created();
+            if (!$order_date) {
+                continue;
+            }
+            
             foreach ($order->get_items() as $item) {
                 $product = $item->get_product();
-                if ($product && has_term($subscription_category, 'product_cat', $product->get_id())) {
-                    return true;
+                if (!$product) {
+                    continue;
+                }
+                
+                // Pour les variations, vérifier le produit parent
+                $product_id = $product->get_id();
+                if ($product->is_type('variation')) {
+                    $product_id = $product->get_parent_id();
+                }
+                
+                // Vérifier si le produit est dans la catégorie "soins"
+                if (has_term($subscription_category, 'product_cat', $product_id)) {
+                    // Calculer la durée de l'abonnement basée sur les attributs de variation
+                    $subscription_duration_days = 30; // Par défaut 1 mois
+                    
+                    // Si c'est une variation, récupérer la durée depuis les attributs
+                    if ($product->is_type('variation')) {
+                        $attributes = $product->get_variation_attributes();
+                        
+                        // Chercher l'attribut de durée (ex: "1-mois", "3-mois", "6-mois")
+                        foreach ($attributes as $key => $value) {
+                            if (stripos($key, 'duree') !== false || stripos($key, 'duration') !== false || stripos($key, 'mois') !== false) {
+                                // Extraire le nombre de mois
+                                if (preg_match('/(\d+)/', $value, $matches)) {
+                                    $months = intval($matches[1]);
+                                    $subscription_duration_days = $months * 30;
+                                }
+                                break;
+                            }
+                        }
+                        
+                        // Alternative : vérifier dans le nom du produit
+                        $product_name = strtolower($item->get_name());
+                        if (preg_match('/(\d+)\s*mois/', $product_name, $matches)) {
+                            $months = intval($matches[1]);
+                            $subscription_duration_days = $months * 30;
+                        }
+                    }
+                    
+                    // Calculer la date d'expiration de l'abonnement
+                    $order_timestamp = $order_date->getTimestamp();
+                    $expiration_timestamp = $order_timestamp + ($subscription_duration_days * 24 * 60 * 60);
+                    $current_timestamp = current_time('timestamp');
+                    
+                    // Vérifier si l'abonnement est toujours actif
+                    if ($current_timestamp <= $expiration_timestamp) {
+                        error_log("has_active_subscription: User {$user_id} a un abonnement actif (commande #{$order->get_id()}, expire le " . date('Y-m-d', $expiration_timestamp) . ")");
+                        return true;
+                    }
                 }
             }
         }
         
+        error_log("has_active_subscription: User {$user_id} n'a pas d'abonnement actif");
         return false;
     }
     

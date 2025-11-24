@@ -62,6 +62,15 @@ function newsaiige_loyalty_admin_menu() {
         'newsaiige-loyalty-recalculate',
         'newsaiige_loyalty_recalculate_page'
     );
+    
+    add_submenu_page(
+        'newsaiige-loyalty',
+        'Importer Points Historiques',
+        '📥 Import Historique',
+        'manage_options',
+        'newsaiige-loyalty-import-history',
+        'newsaiige_loyalty_import_history_page'
+    );
 }
 
 // Page principale d'administration
@@ -589,6 +598,42 @@ function newsaiige_loyalty_users_page() {
         ORDER BY total_points DESC
         LIMIT 50
     ");
+    
+    // Ajouter les utilisateurs avec abonnement actif même sans points
+    global $newsaiige_loyalty;
+    if ($newsaiige_loyalty && !$search) {
+        $all_users = get_users(array('number' => 500));
+        $users_with_subscription = array();
+        
+        foreach ($all_users as $user) {
+            // Vérifier si l'utilisateur a déjà été inclus
+            $already_included = false;
+            foreach ($users_data as $existing_user) {
+                if ($existing_user->ID == $user->ID) {
+                    $already_included = true;
+                    break;
+                }
+            }
+            
+            // Si pas déjà inclus et a un abonnement actif, l'ajouter
+            if (!$already_included && $newsaiige_loyalty->has_active_subscription($user->ID)) {
+                $user_obj = new stdClass();
+                $user_obj->ID = $user->ID;
+                $user_obj->display_name = $user->display_name;
+                $user_obj->user_email = $user->user_email;
+                $user_obj->user_registered = $user->user_registered;
+                $user_obj->total_points = 0;
+                $user_obj->available_points = 0;
+                $user_obj->voucher_count = 0;
+                $user_obj->tier_name = null;
+                $user_obj->tier_slug = null;
+                $users_with_subscription[] = $user_obj;
+            }
+        }
+        
+        // Fusionner les deux listes
+        $users_data = array_merge($users_data, $users_with_subscription);
+    }
     ?>
     
     <div class="wrap">
@@ -672,9 +717,19 @@ function newsaiige_loyalty_users_page() {
                         </td>
                     </tr>
                     <?php else: ?>
-                        <?php foreach ($users_data as $user_data): ?>
+                        <?php foreach ($users_data as $user_data): 
+                            // Vérifier si l'utilisateur a un abonnement actif
+                            $has_subscription = $newsaiige_loyalty ? $newsaiige_loyalty->has_active_subscription($user_data->ID) : false;
+                        ?>
                         <tr>
-                            <td><strong><?php echo esc_html($user_data->display_name); ?></strong></td>
+                            <td>
+                                <strong><?php echo esc_html($user_data->display_name); ?></strong>
+                                <?php if ($has_subscription): ?>
+                                    <span class="subscription-active-badge" title="Abonnement actif">
+                                        ✓ Abonné
+                                    </span>
+                                <?php endif; ?>
+                            </td>
                             <td><?php echo esc_html($user_data->user_email); ?></td>
                             <td><?php echo date('d/m/Y', strtotime($user_data->user_registered)); ?></td>
                             <td>
@@ -717,6 +772,19 @@ function newsaiige_loyalty_users_page() {
     .tier-silver { background: #c0c0c0; color: white; }
     .tier-gold { background: #ffd700; color: #333; }
     .tier-platinum { background: #e5e4e2; color: #333; }
+    
+    .subscription-active-badge {
+        display: inline-block;
+        margin-left: 8px;
+        padding: 3px 8px;
+        background: rgba(76, 175, 80, 0.1);
+        color: #2e7d32;
+        border-radius: 12px;
+        font-size: 10px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
     </style>
     <?php
 }
@@ -1520,4 +1588,280 @@ add_action('admin_notices', function() {
         <?php
     }
 });
+
+/**
+ * Page d'importation des points historiques
+ */
+function newsaiige_loyalty_import_history_page() {
+    global $wpdb, $newsaiige_loyalty;
+    
+    // Traiter l'importation
+    if (isset($_POST['import_historical_points']) && check_admin_referer('loyalty_import_history')) {
+        $orders_processed = 0;
+        $points_added = 0;
+        $users_updated = 0;
+        $errors = 0;
+        
+        $date_from = isset($_POST['date_from']) ? sanitize_text_field($_POST['date_from']) : '';
+        $date_to = isset($_POST['date_to']) ? sanitize_text_field($_POST['date_to']) : '';
+        
+        // Récupérer toutes les commandes complétées
+        $args = array(
+            'status' => 'completed',
+            'limit' => -1,
+            'orderby' => 'date',
+            'order' => 'ASC'
+        );
+        
+        if ($date_from) {
+            $args['date_created'] = '>=' . $date_from;
+        }
+        if ($date_to && $date_from) {
+            $args['date_created'] = $date_from . '...' . $date_to;
+        }
+        
+        $orders = wc_get_orders($args);
+        
+        foreach ($orders as $order) {
+            $order_id = $order->get_id();
+            
+            // Vérifier si déjà traité
+            if (get_post_meta($order_id, '_newsaiige_loyalty_processed', true)) {
+                continue;
+            }
+            
+            $user_id = $order->get_user_id();
+            if (!$user_id) {
+                continue;
+            }
+            
+            // Calculer les points
+            $order_total = $order->get_total();
+            $points_per_euro = floatval($newsaiige_loyalty->get_setting('points_per_euro', 1));
+            $points_earned = floor($order_total * $points_per_euro);
+            
+            if ($points_earned > 0) {
+                $description = sprintf('Points historiques pour la commande #%s', $order_id);
+                
+                if ($newsaiige_loyalty->add_points($user_id, $points_earned, $order_id, 'historical_import', $description)) {
+                    // Marquer comme traité
+                    update_post_meta($order_id, '_newsaiige_loyalty_processed', time());
+                    
+                    $orders_processed++;
+                    $points_added += $points_earned;
+                    
+                    // Vérifier et mettre à jour le palier
+                    $newsaiige_loyalty->check_tier_upgrade($user_id);
+                } else {
+                    $errors++;
+                }
+            }
+        }
+        
+        // Compter les utilisateurs uniques mis à jour
+        $users_updated = $wpdb->get_var($wpdb->prepare("
+            SELECT COUNT(DISTINCT user_id) 
+            FROM {$wpdb->prefix}newsaiige_loyalty_points 
+            WHERE action_type = %s
+        ", 'historical_import'));
+        
+        echo '<div class="notice notice-success is-dismissible"><p>';
+        echo sprintf(
+            '<strong>✅ Importation terminée !</strong><br>' .
+            '• %d commandes traitées<br>' .
+            '• %s points ajoutés<br>' .
+            '• %d utilisateurs mis à jour<br>' .
+            '• %d erreurs',
+            $orders_processed,
+            number_format($points_added),
+            $users_updated,
+            $errors
+        );
+        echo '</p></div>';
+    }
+    
+    // Statistiques des commandes historiques
+    $total_orders = wc_get_orders(array(
+        'status' => 'completed',
+        'limit' => -1,
+        'return' => 'ids'
+    ));
+    
+    $processed_orders = $wpdb->get_var("
+        SELECT COUNT(DISTINCT order_id) 
+        FROM {$wpdb->prefix}newsaiige_loyalty_points 
+        WHERE order_id IS NOT NULL
+    ");
+    
+    $unprocessed_orders = count($total_orders) - $processed_orders;
+    
+    // Calculer le potentiel de points
+    $args_unprocessed = array(
+        'status' => 'completed',
+        'limit' => -1,
+        'meta_query' => array(
+            array(
+                'key' => '_newsaiige_loyalty_processed',
+                'compare' => 'NOT EXISTS'
+            )
+        )
+    );
+    
+    $unprocessed_order_objects = wc_get_orders($args_unprocessed);
+    $potential_points = 0;
+    $potential_users = array();
+    
+    foreach ($unprocessed_order_objects as $order) {
+        $order_total = $order->get_total();
+        $points_per_euro = floatval($newsaiige_loyalty->get_setting('points_per_euro', 1));
+        $potential_points += floor($order_total * $points_per_euro);
+        
+        $user_id = $order->get_user_id();
+        if ($user_id && !in_array($user_id, $potential_users)) {
+            $potential_users[] = $user_id;
+        }
+    }
+    
+    ?>
+    <div class="wrap">
+        <h1>📥 Importation des Points Historiques</h1>
+        
+        <?php if ($unprocessed_orders > 0): ?>
+        <div class="notice notice-warning">
+            <p>
+                <strong>⚠️ Attention :</strong> 
+                <?php echo number_format($unprocessed_orders); ?> commande(s) complétée(s) n'ont pas encore généré de points !
+            </p>
+        </div>
+        <?php endif; ?>
+        
+        <div class="card" style="max-width: 800px;">
+            <h2>📊 Statistiques des Commandes</h2>
+            <table class="widefat" style="margin-top: 15px;">
+                <tbody>
+                    <tr>
+                        <td><strong>Total commandes complétées :</strong></td>
+                        <td><?php echo number_format(count($total_orders)); ?></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Commandes avec points attribués :</strong></td>
+                        <td><?php echo number_format($processed_orders); ?></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Commandes sans points :</strong></td>
+                        <td style="<?php echo $unprocessed_orders > 0 ? 'color: red; font-weight: bold;' : ''; ?>">
+                            <?php echo number_format($unprocessed_orders); ?>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>Points potentiels à attribuer :</strong></td>
+                        <td style="color: #82897F; font-weight: bold;">
+                            <?php echo number_format($potential_points); ?> points
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>Utilisateurs concernés :</strong></td>
+                        <td><?php echo number_format(count($potential_users)); ?></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <?php if ($unprocessed_orders > 0): ?>
+        <div class="card" style="max-width: 800px; margin-top: 20px; background: #e8f5e9; border-left: 4px solid #4caf50;">
+            <h2>🚀 Lancer l'Importation</h2>
+            <p>
+                Cette action va attribuer rétroactivement des points de fidélité pour toutes les commandes 
+                complétées qui n'ont pas encore été traitées par le système de fidélité.
+            </p>
+            
+            <form method="post" style="margin-top: 20px;">
+                <?php wp_nonce_field('loyalty_import_history'); ?>
+                
+                <table class="form-table">
+                    <tr>
+                        <th scope="row">
+                            <label for="date_from">Date de début (optionnel)</label>
+                        </th>
+                        <td>
+                            <input type="date" id="date_from" name="date_from" class="regular-text">
+                            <p class="description">Importer uniquement les commandes à partir de cette date</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">
+                            <label for="date_to">Date de fin (optionnel)</label>
+                        </th>
+                        <td>
+                            <input type="date" id="date_to" name="date_to" class="regular-text">
+                            <p class="description">Importer uniquement les commandes jusqu'à cette date</p>
+                        </td>
+                    </tr>
+                </table>
+                
+                <p style="margin-top: 20px;">
+                    <button type="submit" name="import_historical_points" class="button button-primary button-large" 
+                            onclick="return confirm('⚠️ Cette action va traiter <?php echo number_format($unprocessed_orders); ?> commandes et attribuer environ <?php echo number_format($potential_points); ?> points.\n\nCette opération peut prendre plusieurs minutes.\n\nContinuer ?');">
+                        📥 Importer les Points Historiques
+                    </button>
+                </p>
+                
+                <p class="description" style="margin-top: 10px;">
+                    <strong>Note :</strong> Cette opération ne peut être annulée. Les points seront attribués 
+                    et les paliers des utilisateurs seront automatiquement mis à jour.
+                </p>
+            </form>
+        </div>
+        <?php else: ?>
+        <div class="card" style="max-width: 800px; margin-top: 20px; background: #f0f8ff; border-left: 4px solid #2196f3;">
+            <h2>✅ Toutes les commandes sont à jour !</h2>
+            <p>
+                Toutes les commandes complétées ont déjà été traitées et les points correspondants 
+                ont été attribués aux clients.
+            </p>
+            <p style="margin-top: 15px;">
+                <strong>💡 Astuce :</strong> Les nouvelles commandes seront automatiquement traitées 
+                lorsqu'elles passent au statut "Complétée".
+            </p>
+        </div>
+        <?php endif; ?>
+        
+        <div class="card" style="max-width: 800px; margin-top: 20px; background: #fffbf0; border-left: 4px solid #ff9800;">
+            <h2>ℹ️ Informations Importantes</h2>
+            <ul style="list-style-type: disc; margin-left: 20px; line-height: 1.8;">
+                <li><strong>Attribution automatique :</strong> Depuis l'installation du plugin, les points sont automatiquement attribués quand une commande passe à "Complétée"</li>
+                <li><strong>Commandes historiques :</strong> Les commandes passées AVANT l'installation du plugin doivent être importées manuellement via cette page</li>
+                <li><strong>Calcul des points :</strong> <?php echo $newsaiige_loyalty->get_setting('points_per_euro', 1); ?> point(s) par euro dépensé (configurable dans Paramètres)</li>
+                <li><strong>Durée de validité :</strong> <?php echo $newsaiige_loyalty->get_setting('points_expiry_days', 365); ?> jours (configurable dans Paramètres)</li>
+                <li><strong>Paliers :</strong> Les paliers sont automatiquement mis à jour après l'attribution des points</li>
+                <li><strong>Doublons évités :</strong> Chaque commande ne peut être traitée qu'une seule fois</li>
+            </ul>
+        </div>
+    </div>
+    
+    <style>
+    .card {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .card h2 {
+        margin-top: 0;
+        color: #333;
+        border-bottom: 2px solid #82897F;
+        padding-bottom: 10px;
+    }
+    
+    .card ul {
+        margin-bottom: 0;
+    }
+    
+    .card ul li {
+        margin-bottom: 10px;
+    }
+    </style>
+    <?php
+}
 ?>

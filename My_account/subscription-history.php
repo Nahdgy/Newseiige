@@ -27,9 +27,15 @@ function newsaiige_subscription_history_shortcode($atts) {
         $order_items = $order->get_items();
         foreach ($order_items as $item) {
             $product = $item->get_product();
-            if ($product && $product->is_type('variable')) {
+            if ($product) {
+                // Pour les produits variables/variations, vérifier le produit parent
+                $product_id = $product->get_id();
+                if ($product->is_type('variation')) {
+                    $product_id = $product->get_parent_id();
+                }
+                
                 // Vérifier si le produit est dans la catégorie "soins"
-                $terms = wp_get_post_terms($product->get_id(), 'product_cat');
+                $terms = wp_get_post_terms($product_id, 'product_cat');
                 foreach ($terms as $term) {
                     if (strtolower($term->name) === 'soins' || strtolower($term->slug) === 'soins') {
                         $subscription_orders[] = array(
@@ -323,7 +329,7 @@ function newsaiige_subscription_history_shortcode($atts) {
                                 </td>
                                 <td>
                                     <div class="product-name">
-                                        <?php echo esc_html($item->get_name()); ?>
+                                        <?php echo esc_html(strip_tags($item->get_name())); ?>
                                     </div>
                                     <?php if (!empty($variation_data)): ?>
                                         <div class="product-variation">

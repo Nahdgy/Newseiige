@@ -28,8 +28,14 @@ function newsaiige_orders_history_shortcode($atts) {
         foreach ($order_items as $item) {
             $product = $item->get_product();
             if ($product) {
+                // Pour les produits variables, vérifier le produit parent
+                $product_id = $product->get_id();
+                if ($product->is_type('variation')) {
+                    $product_id = $product->get_parent_id();
+                }
+                
                 // Vérifier si le produit N'EST PAS dans la catégorie "soins"
-                $terms = wp_get_post_terms($product->get_id(), 'product_cat');
+                $terms = wp_get_post_terms($product_id, 'product_cat');
                 $is_soins = false;
                 foreach ($terms as $term) {
                     if (strtolower($term->name) === 'soins' || strtolower($term->slug) === 'soins') {
@@ -338,8 +344,14 @@ function newsaiige_orders_history_shortcode($atts) {
                             $item = $prod_order['item'];
                             $product = $prod_order['product'];
                             
-                            // Récupérer les catégories du produit
-                            $product_categories = wp_get_post_terms($product->get_id(), 'product_cat');
+                            // Pour les variations, récupérer l'ID du produit parent
+                            $product_id = $product->get_id();
+                            if ($product->is_type('variation')) {
+                                $product_id = $product->get_parent_id();
+                            }
+                            
+                            // Récupérer les catégories du produit parent
+                            $product_categories = wp_get_post_terms($product_id, 'product_cat');
                             $category_names = array();
                             foreach ($product_categories as $category) {
                                 $category_names[] = $category->name;
@@ -379,7 +391,7 @@ function newsaiige_orders_history_shortcode($atts) {
                                         </div>
                                     <?php endif; ?>
                                     <div class="product-name">
-                                        <?php echo esc_html($item->get_name()); ?>
+                                        <?php echo esc_html(strip_tags($item->get_name())); ?>
                                         <span class="product-type-badge <?php echo esc_attr($type_class); ?>">
                                             <?php echo esc_html(ucfirst($product_type)); ?>
                                         </span>
