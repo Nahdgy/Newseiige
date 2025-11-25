@@ -943,8 +943,21 @@ function newsaiige_render_loyalty_dashboard() {
                 <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #f0f0f0;">
                     <h4>💡 Le saviez-vous ?</h4>
                     <ul style="font-size: 0.9em; color: #666; line-height: 1.6;">
-                        <li>Gagnez 1 point par euro dépensé</li>
+                        <li>En étant abonné, vous bénéficiez de points bonus</li>
+                        <li>Pour tout les abonnés, un bonus d'anniversaire est offert chaque année</li> 
                         <li>Les bons expirent 6 mois après leur émission</li>
+                    </ul>
+                </div>
+            </div>
+            <!-- Gains de points -->
+            <div class="actions-section">
+                <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #f0f0f0;">
+                    <h4>Comment gagner des points ?</h4>
+                    <ul style="font-size: 0.9em; color: #666; line-height: 1.6;">
+                        <li>Chaque euro dépensé = 1 point</li>
+                        <li>Un avis Google = 250 points</li>
+                        <li>Un avis sur le site newsaiige.com = 250 points</li>
+                        <li>Un avis planity = 100 points</li>
                     </ul>
                 </div>
             </div>
