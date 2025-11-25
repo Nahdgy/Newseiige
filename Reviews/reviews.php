@@ -44,18 +44,11 @@ function newsaiige_reviews_shortcode($atts) {
         $stats = (object)array('total_reviews' => count($reviews), 'average_rating' => 5.0);
     }
     
-    // Enqueue les scripts nécessaires seulement si le formulaire est activé
-    if ($atts['show_form']) {
-        wp_enqueue_script('newsaiige-reviews-js', '', array('jquery'), '1.0', true);
-        wp_add_inline_script('newsaiige-reviews-js', '
-            const newsaiige_ajax = {
-                ajax_url: "' . admin_url('admin-ajax.php') . '",
-                nonce: "' . wp_create_nonce('newsaiige_review_nonce') . '"
-            };
-        ');
-    }
-    
     ob_start();
+    
+    // Générer les variables AJAX pour le formulaire
+    $ajax_url = admin_url('admin-ajax.php');
+    $nonce = wp_create_nonce('newsaiige_review_nonce');
     ?>
 
     <style>
@@ -403,6 +396,16 @@ function newsaiige_reviews_shortcode($atts) {
         }
     }
     </style>
+
+    <?php if ($atts['show_form']): ?>
+    <script>
+    // Variables AJAX pour le formulaire d'avis
+    const newsaiige_ajax = {
+        ajax_url: "<?php echo esc_url($ajax_url); ?>",
+        nonce: "<?php echo esc_js($nonce); ?>"
+    };
+    </script>
+    <?php endif; ?>
 
     <div class="newsaiige-reviews">
         <div class="reviews-header">

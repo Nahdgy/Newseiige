@@ -45,17 +45,12 @@ function newsaiige_simple_stars_reviews($atts) {
         $stats = (object)array('total_reviews' => 0, 'average_rating' => 0);
     }
     
-    // Enqueue scripts
-    wp_enqueue_script('newsaiige-simple-stars-js', '', array('jquery'), '1.0', true);
-    wp_add_inline_script('newsaiige-simple-stars-js', '
-        const newsaiige_stars_ajax = {
-            ajax_url: "' . admin_url('admin-ajax.php') . '",
-            nonce: "' . wp_create_nonce('newsaiige_review_nonce') . '"
-        };
-    ');
-    
     $unique_id = 'stars_' . uniqid();
     $service_display = !empty($atts['service_name']) ? $atts['service_name'] : 'général';
+    
+    // Variables AJAX
+    $ajax_url = admin_url('admin-ajax.php');
+    $nonce = wp_create_nonce('newsaiige_review_nonce');
     
     ob_start();
     ?>
@@ -433,6 +428,16 @@ function newsaiige_simple_stars_reviews($atts) {
         }
     }
     </style>
+    
+    <script>
+    // Variables AJAX pour les avis (déclaration conditionnelle pour éviter les conflits)
+    if (typeof newsaiige_stars_ajax === 'undefined') {
+        var newsaiige_stars_ajax = {
+            ajax_url: "<?php echo esc_url($ajax_url); ?>",
+            nonce: "<?php echo esc_js($nonce); ?>"
+        };
+    }
+    </script>
     
     <div class="simple-stars-container size-<?php echo esc_attr($atts['size']); ?>" id="open_<?php echo $unique_id; ?>">
         <div class="simple-stars-display">
