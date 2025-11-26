@@ -237,9 +237,80 @@ class NewsaiigeLoyaltySystemSafe {
     }
     
     /**
-     * Vérifier si un utilisateur a un abonnement actif
+     * Vérifier si un utilisateur a un abonnement WPS Subscriptions actif
      */
     public function has_active_subscription($user_id) {
+        global $wpdb;
+        
+        // PRIORITÉ 1 : Vérifier dans wc_orders (HPOS activé - WPS Subscriptions)
+        $hpos_subscription = $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*)
+             FROM {$wpdb->prefix}wc_orders
+             WHERE type = 'wps_subscriptions'
+             AND customer_id = %d
+             AND status IN ('wc-active', 'wc-pending-cancel', 'wc-wps_renewal', 'active')
+             LIMIT 1",
+            $user_id
+        ));
+        
+        if ($hpos_subscription > 0) {
+            error_log("has_active_subscription: User {$user_id} a un abonnement WPS actif (HPOS)");
+            return true;
+        }
+        
+        // PRIORITÉ 2 : Vérifier dans wp_posts (HPOS non activé - WPS Subscriptions)
+        $post_subscription = $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*)
+             FROM {$wpdb->posts} p
+             INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
+             WHERE p.post_type = 'wps_subscriptions'
+             AND pm.meta_key = '_customer_user'
+             AND pm.meta_value = %d
+             AND p.post_status IN ('wc-active', 'wc-pending-cancel', 'wc-wps_renewal', 'active')
+             LIMIT 1",
+            $user_id
+        ));
+        
+        if ($post_subscription > 0) {
+            error_log("has_active_subscription: User {$user_id} a un abonnement WPS actif (wp_posts)");
+            return true;
+        }
+        
+        // PRIORITÉ 3 : Vérifier les commandes shop_order avec statut wc-processing (HPOS)
+        $hpos_processing_order = $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*)
+             FROM {$wpdb->prefix}wc_orders
+             WHERE type = 'shop_order'
+             AND customer_id = %d
+             AND status = 'wc-processing'
+             LIMIT 1",
+            $user_id
+        ));
+        
+        if ($hpos_processing_order > 0) {
+            error_log("has_active_subscription: User {$user_id} a une commande en cours (HPOS shop_order wc-processing)");
+            return true;
+        }
+        
+        // PRIORITÉ 4 : Vérifier les commandes shop_order avec statut wc-processing (wp_posts)
+        $post_processing_order = $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*)
+             FROM {$wpdb->posts} p
+             INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
+             WHERE p.post_type = 'shop_order'
+             AND pm.meta_key = '_customer_user'
+             AND pm.meta_value = %d
+             AND p.post_status = 'wc-processing'
+             LIMIT 1",
+            $user_id
+        ));
+        
+        if ($post_processing_order > 0) {
+            error_log("has_active_subscription: User {$user_id} a une commande en cours (wp_posts shop_order wc-processing)");
+            return true;
+        }
+        
+        // PRIORITÉ 3 : Méthode de secours avec les commandes classiques
         $subscription_category = $this->get_setting('subscription_category_slug', 'soins');
         
         if (empty($subscription_category)) {

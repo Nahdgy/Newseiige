@@ -71,6 +71,15 @@ function newsaiige_loyalty_admin_menu() {
         'newsaiige-loyalty-import-history',
         'newsaiige_loyalty_import_history_page'
     );
+    
+    add_submenu_page(
+        'newsaiige-loyalty',
+        'Réactiver les Points',
+        '🔓 Réactiver Points',
+        'manage_options',
+        'newsaiige-loyalty-reactivate-points',
+        'newsaiige_loyalty_reactivate_points_page'
+    );
 }
 
 // Page principale d'administration
@@ -532,7 +541,7 @@ function newsaiige_loyalty_tiers_page() {
 
 // Page de gestion des utilisateurs
 function newsaiige_loyalty_users_page() {
-    global $wpdb;
+    global $wpdb, $newsaiige_loyalty;
     
     $points_table = $wpdb->prefix . 'newsaiige_loyalty_points';
     $tiers_table = $wpdb->prefix . 'newsaiige_loyalty_tiers';
@@ -562,6 +571,229 @@ function newsaiige_loyalty_users_page() {
             
             echo '<div class="notice notice-success"><p>Points ajoutés avec succès !</p></div>';
         }
+    }
+    
+    // Vérifier un utilisateur spécifique
+    if (isset($_POST['check_single_user']) && check_admin_referer('loyalty_check_subscriptions')) {
+        $user_id = isset($_POST['subscription_user_id']) ? intval($_POST['subscription_user_id']) : 0;
+        
+        if ($user_id > 0) {
+            $user = get_user_by('id', $user_id);
+            
+            if ($user) {
+                // Diagnostic détaillé de l'abonnement WPS Subscriptions
+                $debug_info = array();
+                
+                // PRIORITÉ 1 : Vérifier dans wc_orders (HPOS activé - WPS Subscriptions)
+                $hpos_subscriptions = $wpdb->get_results($wpdb->prepare(
+                    "SELECT id, status, type, date_created_gmt
+                     FROM {$wpdb->prefix}wc_orders
+                     WHERE type = 'wps_subscriptions'
+                     AND customer_id = %d
+                     ORDER BY date_created_gmt DESC",
+                    $user_id
+                ));
+                
+                if (!empty($hpos_subscriptions)) {
+                    $debug_info[] = '✅ HPOS détecté - Abonnements WPS trouvés dans wc_orders : ' . count($hpos_subscriptions);
+                    foreach ($hpos_subscriptions as $sub) {
+                        $is_active = in_array($sub->status, array('wc-active', 'wc-pending-cancel', 'wc-wps_renewal', 'active'));
+                        $status_icon = $is_active ? '✅' : '❌';
+                        $debug_info[] = '&nbsp;&nbsp;' . $status_icon . ' Abonnement #' . $sub->id . ' - Statut : <strong>' . $sub->status . '</strong> (' . $sub->date_created_gmt . ')';
+                    }
+                } else {
+                    $debug_info[] = '❌ Aucun abonnement trouvé dans wc_orders (HPOS)';
+                }
+                
+                // PRIORITÉ 2 : Vérifier les commandes shop_order en cours (HPOS)
+                $hpos_orders = $wpdb->get_results($wpdb->prepare(
+                    "SELECT id, status, type, date_created_gmt
+                     FROM {$wpdb->prefix}wc_orders
+                     WHERE type = 'shop_order'
+                     AND customer_id = %d
+                     AND status = 'wc-processing'
+                     ORDER BY date_created_gmt DESC
+                     LIMIT 3",
+                    $user_id
+                ));
+                
+                if (!empty($hpos_orders)) {
+                    $debug_info[] = '✅ Commandes en cours trouvées dans wc_orders : ' . count($hpos_orders);
+                    foreach ($hpos_orders as $order) {
+                        $debug_info[] = '&nbsp;&nbsp;✅ Commande #' . $order->id . ' - Statut : <strong>' . $order->status . '</strong> (' . $order->date_created_gmt . ')';
+                    }
+                }
+                
+                // PRIORITÉ 3 : Vérifier dans wp_posts (HPOS non activé)
+                if (empty($hpos_subscriptions) && empty($hpos_orders)) {
+                    $post_subscriptions = $wpdb->get_results($wpdb->prepare(
+                        "SELECT p.ID, p.post_type, p.post_status, p.post_date
+                         FROM {$wpdb->posts} p
+                         INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
+                         WHERE p.post_type IN ('wps_subscriptions', 'shop_order')
+                         AND pm.meta_key = '_customer_user'
+                         AND pm.meta_value = %d
+                         ORDER BY p.post_date DESC
+                         LIMIT 5",
+                        $user_id
+                    ));
+                    
+                    if (!empty($post_subscriptions)) {
+                        $debug_info[] = '✅ Éléments trouvés dans wp_posts : ' . count($post_subscriptions);
+                        foreach ($post_subscriptions as $sub) {
+                            $is_active = ($sub->post_type === 'wps_subscriptions' && in_array($sub->post_status, array('wc-active', 'wc-pending-cancel', 'wc-wps_renewal', 'active'))) 
+                                      || ($sub->post_type === 'shop_order' && $sub->post_status === 'wc-processing');
+                            $status_icon = $is_active ? '✅' : '❌';
+                            $debug_info[] = '&nbsp;&nbsp;' . $status_icon . ' ' . ucfirst(str_replace('_', ' ', $sub->post_type)) . ' #' . $sub->ID . ' - Statut : <strong>' . $sub->post_status . '</strong>';
+                        }
+                    } else {
+                        $debug_info[] = '❌ Aucun abonnement ou commande trouvé';
+                        $debug_info[] = '🔍 L\'utilisateur n\'a aucun abonnement WPS Subscriptions ou commande en cours';
+                    }
+                }
+                
+                // Vérifier si l'utilisateur a un abonnement actif
+                $has_subscription = $newsaiige_loyalty && $newsaiige_loyalty->has_active_subscription($user_id);
+                
+                if ($has_subscription) {
+                    // Vérifier si l'utilisateur a déjà un palier
+                    $existing_tier = $wpdb->get_var($wpdb->prepare("
+                        SELECT COUNT(*)
+                        FROM {$wpdb->prefix}newsaiige_loyalty_user_tiers
+                        WHERE user_id = %d
+                    ", $user_id));
+                    
+                    if ($existing_tier == 0) {
+                        // Attribuer le palier Bronze par défaut
+                        $bronze_tier = $wpdb->get_row("
+                            SELECT id FROM {$tiers_table}
+                            WHERE tier_slug = 'bronze'
+                            LIMIT 1
+                        ");
+                        
+                        if ($bronze_tier) {
+                            $wpdb->insert(
+                                $wpdb->prefix . 'newsaiige_loyalty_user_tiers',
+                                array(
+                                    'user_id' => $user_id,
+                                    'tier_id' => $bronze_tier->id,
+                                    'is_current' => 1
+                                )
+                            );
+                            
+                            echo '<div class="notice notice-success is-dismissible"><p>';
+                            echo sprintf(
+                                '<strong>✅ Succès !</strong><br>' .
+                                'L\'utilisateur <strong>%s</strong> a un abonnement actif et a été ajouté au programme de fidélité avec le palier Bronze.',
+                                esc_html($user->display_name)
+                            );
+                            echo '</p></div>';
+                        }
+                    } else {
+                        echo '<div class="notice notice-info is-dismissible"><p>';
+                        echo sprintf(
+                            '<strong>ℹ️ Information :</strong><br>' .
+                            'L\'utilisateur <strong>%s</strong> a un abonnement actif et fait déjà partie du programme de fidélité.',
+                            esc_html($user->display_name)
+                        );
+                        echo '</p></div>';
+                    }
+                } else {
+                    echo '<div class="notice notice-warning is-dismissible"><p>';
+                    echo sprintf(
+                        '<strong>⚠️ Attention :</strong><br>' .
+                        'L\'utilisateur <strong>%s</strong> n\'a pas d\'abonnement actif détecté.<br><br>' .
+                        '<strong>Diagnostic :</strong><br>%s',
+                        esc_html($user->display_name),
+                        implode('<br>', $debug_info)
+                    );
+                    echo '</p></div>';
+                }
+            } else {
+                echo '<div class="notice notice-error is-dismissible"><p>';
+                echo '<strong>❌ Erreur :</strong> Utilisateur non trouvé.';
+                echo '</p></div>';
+            }
+        } else {
+            echo '<div class="notice notice-error is-dismissible"><p>';
+            echo '<strong>❌ Erreur :</strong> Veuillez sélectionner un utilisateur.';
+            echo '</p></div>';
+        }
+    }
+    
+    // Vérifier tous les abonnés
+    if (isset($_POST['check_subscriptions']) && check_admin_referer('loyalty_check_subscriptions')) {
+        $checked_users = 0;
+        $added_users = 0;
+        $subscribed_users = 0;
+        
+        // Récupérer tous les utilisateurs
+        $all_users = get_users(array('number' => -1));
+        
+        foreach ($all_users as $user) {
+            $checked_users++;
+            
+            // Vérifier si l'utilisateur a un abonnement actif
+            if ($newsaiige_loyalty && $newsaiige_loyalty->has_active_subscription($user->ID)) {
+                $subscribed_users++;
+                
+                // Vérifier si l'utilisateur a déjà des points ou un palier
+                $existing_points = $wpdb->get_var($wpdb->prepare("
+                    SELECT COUNT(*)
+                    FROM {$points_table}
+                    WHERE user_id = %d
+                ", $user->ID));
+                
+                $existing_tier = $wpdb->get_var($wpdb->prepare("
+                    SELECT COUNT(*)
+                    FROM {$wpdb->prefix}newsaiige_loyalty_user_tiers
+                    WHERE user_id = %d
+                ", $user->ID));
+                
+                // Si l'utilisateur n'a ni points ni palier, l'ajouter
+                if ($existing_points == 0 && $existing_tier == 0) {
+                    // Attribuer le palier Bronze par défaut
+                    $bronze_tier = $wpdb->get_row("
+                        SELECT id FROM {$tiers_table}
+                        WHERE tier_slug = 'bronze'
+                        LIMIT 1
+                    ");
+                    
+                    if ($bronze_tier) {
+                        // Désactiver les anciens paliers
+                        $wpdb->update(
+                            $wpdb->prefix . 'newsaiige_loyalty_user_tiers',
+                            array('is_current' => 0),
+                            array('user_id' => $user->ID)
+                        );
+                        
+                        // Ajouter le nouveau palier
+                        $wpdb->insert(
+                            $wpdb->prefix . 'newsaiige_loyalty_user_tiers',
+                            array(
+                                'user_id' => $user->ID,
+                                'tier_id' => $bronze_tier->id,
+                                'is_current' => 1
+                            )
+                        );
+                        
+                        $added_users++;
+                    }
+                }
+            }
+        }
+        
+        echo '<div class="notice notice-success is-dismissible"><p>';
+        echo sprintf(
+            '<strong>✅ Vérification terminée !</strong><br>' .
+            '• %d utilisateurs vérifiés<br>' .
+            '• %d utilisateurs avec abonnement actif<br>' .
+            '• %d nouveaux utilisateurs ajoutés au programme',
+            $checked_users,
+            $subscribed_users,
+            $added_users
+        );
+        echo '</p></div>';
     }
     
     // Recherche d'utilisateurs
@@ -689,6 +921,44 @@ function newsaiige_loyalty_users_page() {
             </form>
         </div>
         
+        <!-- Vérifier le statut d'abonné -->
+        <div class="loyalty-admin-form-card">
+            <h2>Vérifier et ajouter des abonnés au programme</h2>
+            <form method="post" action="">
+                <?php wp_nonce_field('loyalty_check_subscriptions'); ?>
+                <input type="hidden" name="action" value="check_subscription">
+                
+                <table class="form-table">
+                    <tr>
+                        <th><label for="subscription_user_id">Vérifier un utilisateur</label></th>
+                        <td>
+                            <select id="subscription_user_id" name="subscription_user_id" style="min-width: 300px;">
+                                <option value="">Sélectionner un utilisateur...</option>
+                                <?php
+                                $all_users_sub = get_users(array('orderby' => 'display_name', 'number' => -1));
+                                foreach ($all_users_sub as $user) {
+                                    echo '<option value="' . $user->ID . '">' . esc_html($user->display_name . ' (' . $user->user_email . ')') . '</option>';
+                                }
+                                ?>
+                            </select>
+                            <p class="description">Vérifier si cet utilisateur a un abonnement actif et l'ajouter au programme si nécessaire</p>
+                        </td>
+                    </tr>
+                </table>
+                
+                <p class="submit">
+                    <button type="submit" name="check_single_user" class="button button-secondary" style="margin-right: 10px;">
+                        🔍 Vérifier cet utilisateur
+                    </button>
+                    <button type="submit" name="check_subscriptions" class="button button-primary" 
+                            style="background: #82897F; border-color: #82897F;"
+                            onclick="return confirm('🔍 Cette action va vérifier TOUS les utilisateurs avec des abonnements actifs et les ajouter au programme de fidélité s\'ils n\'en font pas déjà partie.\n\nCela peut prendre quelques minutes.\n\nContinuer ?');">
+                        🔍 Vérifier TOUS les Abonnés
+                    </button>
+                </p>
+            </form>
+        </div>
+        
         <!-- Liste des utilisateurs -->
         <div class="loyalty-admin-table-card">
             <h2>Utilisateurs du programme de fidélité</h2>
@@ -718,15 +988,50 @@ function newsaiige_loyalty_users_page() {
                     </tr>
                     <?php else: ?>
                         <?php foreach ($users_data as $user_data): 
-                            // Vérifier si l'utilisateur a un abonnement actif
-                            $has_subscription = $newsaiige_loyalty ? $newsaiige_loyalty->has_active_subscription($user_data->ID) : false;
+                            // Vérifier le statut de l'abonnement
+                            $subscription_status = 'none';
+                            
+                            // Vérifier si c'est un abonnement WPS actif
+                            $hpos_subscription = $wpdb->get_var($wpdb->prepare(
+                                "SELECT status FROM {$wpdb->prefix}wc_orders 
+                                 WHERE type = 'wps_subscriptions' 
+                                 AND customer_id = %d 
+                                 AND status IN ('wc-active', 'wc-pending-cancel', 'wc-wps_renewal', 'active')
+                                 ORDER BY date_created_gmt DESC LIMIT 1",
+                                $user_data->ID
+                            ));
+                            
+                            if ($hpos_subscription) {
+                                $subscription_status = 'active';
+                            } else {
+                                // Vérifier la dernière commande shop_order
+                                $last_order = $wpdb->get_row($wpdb->prepare(
+                                    "SELECT id, status FROM {$wpdb->prefix}wc_orders 
+                                     WHERE type = 'shop_order' 
+                                     AND customer_id = %d 
+                                     ORDER BY date_created_gmt DESC LIMIT 1",
+                                    $user_data->ID
+                                ));
+                                
+                                if ($last_order) {
+                                    if (in_array($last_order->status, array('wc-processing', 'wc-completed'))) {
+                                        $subscription_status = 'active'; // wc-processing ou wc-completed = Abonné
+                                    } elseif ($last_order->status === 'wc-failed') {
+                                        $subscription_status = 'pending'; // wc-failed = Attente
+                                    }
+                                }
+                            }
                         ?>
                         <tr>
                             <td>
                                 <strong><?php echo esc_html($user_data->display_name); ?></strong>
-                                <?php if ($has_subscription): ?>
-                                    <span class="subscription-active-badge" title="Abonnement actif">
+                                <?php if ($subscription_status === 'active'): ?>
+                                    <span class="subscription-active-badge" title="Abonnement actif ou commande en cours">
                                         ✓ Abonné
+                                    </span>
+                                <?php elseif ($subscription_status === 'pending'): ?>
+                                    <span class="subscription-pending-badge" title="Paiement échoué">
+                                        ⏳ Attente
                                     </span>
                                 <?php endif; ?>
                             </td>
@@ -779,6 +1084,19 @@ function newsaiige_loyalty_users_page() {
         padding: 3px 8px;
         background: rgba(76, 175, 80, 0.1);
         color: #2e7d32;
+        border-radius: 12px;
+        font-size: 10px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+    
+    .subscription-pending-badge {
+        display: inline-block;
+        margin-left: 8px;
+        padding: 3px 8px;
+        background: rgba(255, 152, 0, 0.1);
+        color: #e65100;
         border-radius: 12px;
         font-size: 10px;
         font-weight: 600;
@@ -1860,6 +2178,287 @@ function newsaiige_loyalty_import_history_page() {
     
     .card ul li {
         margin-bottom: 10px;
+    }
+    </style>
+    <?php
+}
+
+/**
+ * Page de réactivation des points inactifs
+ */
+function newsaiige_loyalty_reactivate_points_page() {
+    global $wpdb;
+    
+    $points_table = $wpdb->prefix . 'newsaiige_loyalty_points';
+    
+    // Traiter la réactivation
+    if (isset($_POST['reactivate_points']) && check_admin_referer('loyalty_reactivate_points')) {
+        $reactivate_type = sanitize_text_field($_POST['reactivate_type']);
+        
+        if ($reactivate_type === 'inactive') {
+            // Réactiver tous les points inactifs
+            $updated = $wpdb->query("
+                UPDATE {$points_table}
+                SET is_active = 1
+                WHERE is_active = 0
+                AND (expires_at IS NULL OR expires_at > NOW())
+            ");
+            
+            echo '<div class="notice notice-success is-dismissible"><p>';
+            echo sprintf('<strong>✅ Succès !</strong> %d enregistrement(s) de points ont été réactivés.', $updated);
+            echo '</p></div>';
+            
+        } elseif ($reactivate_type === 'extend_expiry') {
+            // Étendre l'expiration de 6 mois
+            $updated = $wpdb->query("
+                UPDATE {$points_table}
+                SET expires_at = DATE_ADD(expires_at, INTERVAL 6 MONTH)
+                WHERE expires_at IS NOT NULL
+                AND expires_at > NOW()
+            ");
+            
+            echo '<div class="notice notice-success is-dismissible"><p>';
+            echo sprintf('<strong>✅ Succès !</strong> La date d\'expiration de %d enregistrement(s) a été prolongée de 6 mois.', $updated);
+            echo '</p></div>';
+            
+        } elseif ($reactivate_type === 'reactivate_expired') {
+            // Réactiver les points expirés et prolonger de 6 mois
+            $updated = $wpdb->query("
+                UPDATE {$points_table}
+                SET is_active = 1,
+                    expires_at = DATE_ADD(NOW(), INTERVAL 6 MONTH)
+                WHERE expires_at IS NOT NULL
+                AND expires_at <= NOW()
+            ");
+            
+            echo '<div class="notice notice-success is-dismissible"><p>';
+            echo sprintf('<strong>✅ Succès !</strong> %d enregistrement(s) de points expirés ont été réactivés avec une nouvelle expiration.', $updated);
+            echo '</p></div>';
+        }
+        
+        // Recalculer les paliers après réactivation
+        global $newsaiige_loyalty;
+        $users_with_points = $wpdb->get_results("
+            SELECT DISTINCT user_id
+            FROM {$points_table}
+            WHERE is_active = 1
+        ");
+        
+        foreach ($users_with_points as $user_data) {
+            $newsaiige_loyalty->check_tier_upgrade($user_data->user_id);
+        }
+        
+        echo '<div class="notice notice-info is-dismissible"><p>';
+        echo sprintf('<strong>ℹ️ Info :</strong> Les paliers de %d utilisateur(s) ont été recalculés.', count($users_with_points));
+        echo '</p></div>';
+    }
+    
+    // Statistiques des points
+    $stats = $wpdb->get_row("
+        SELECT 
+            COUNT(*) as total_records,
+            SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active_records,
+            SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END) as inactive_records,
+            SUM(CASE WHEN expires_at IS NOT NULL AND expires_at <= NOW() THEN 1 ELSE 0 END) as expired_records,
+            SUM(CASE WHEN is_active = 1 THEN points_available ELSE 0 END) as total_active_points,
+            SUM(CASE WHEN is_active = 0 THEN points_available ELSE 0 END) as total_inactive_points,
+            SUM(CASE WHEN expires_at IS NOT NULL AND expires_at <= NOW() THEN points_available ELSE 0 END) as total_expired_points
+        FROM {$points_table}
+    ");
+    
+    // Utilisateurs affectés
+    $affected_users = $wpdb->get_results("
+        SELECT 
+            u.ID,
+            u.display_name,
+            u.user_email,
+            SUM(CASE WHEN p.is_active = 1 AND (p.expires_at IS NULL OR p.expires_at > NOW()) THEN p.points_available ELSE 0 END) as active_points,
+            SUM(CASE WHEN p.is_active = 0 AND (p.expires_at IS NULL OR p.expires_at > NOW()) THEN p.points_available ELSE 0 END) as inactive_points,
+            SUM(CASE WHEN p.expires_at IS NOT NULL AND p.expires_at <= NOW() THEN p.points_available ELSE 0 END) as expired_points,
+            SUM(p.points_available) as total_points
+        FROM {$wpdb->users} u
+        INNER JOIN {$points_table} p ON u.ID = p.user_id
+        GROUP BY u.ID
+        HAVING inactive_points > 0 OR expired_points > 0
+        ORDER BY (inactive_points + expired_points) DESC
+        LIMIT 20
+    ");
+    
+    ?>
+    <div class="wrap">
+        <h1>🔓 Réactiver les Points Inactifs</h1>
+        
+        <?php if ($stats->inactive_records > 0 || $stats->expired_records > 0): ?>
+        <div class="notice notice-warning">
+            <p>
+                <strong>⚠️ Attention :</strong> 
+                <?php 
+                $messages = array();
+                if ($stats->inactive_records > 0) {
+                    $messages[] = sprintf('%d enregistrement(s) inactif(s) avec %s points', 
+                        $stats->inactive_records, 
+                        number_format($stats->total_inactive_points)
+                    );
+                }
+                if ($stats->expired_records > 0) {
+                    $messages[] = sprintf('%d enregistrement(s) expiré(s) avec %s points', 
+                        $stats->expired_records, 
+                        number_format($stats->total_expired_points)
+                    );
+                }
+                echo implode(' et ', $messages);
+                ?>
+            </p>
+        </div>
+        <?php endif; ?>
+        
+        <div class="card" style="max-width: 800px; background: white; padding: 20px; border-radius: 8px; margin-top: 20px;">
+            <h2>📊 Statistiques des Points</h2>
+            <table class="widefat" style="margin-top: 15px;">
+                <tbody>
+                    <tr>
+                        <td><strong>Total d'enregistrements :</strong></td>
+                        <td><?php echo number_format($stats->total_records); ?></td>
+                    </tr>
+                    <tr style="background: #e8f5e9;">
+                        <td><strong>Enregistrements actifs :</strong></td>
+                        <td><?php echo number_format($stats->active_records); ?> (<?php echo number_format($stats->total_active_points); ?> points)</td>
+                    </tr>
+                    <tr style="background: #fff3e0;">
+                        <td><strong>Enregistrements inactifs :</strong></td>
+                        <td style="<?php echo $stats->inactive_records > 0 ? 'color: #f57c00; font-weight: bold;' : ''; ?>">
+                            <?php echo number_format($stats->inactive_records); ?> (<?php echo number_format($stats->total_inactive_points); ?> points)
+                        </td>
+                    </tr>
+                    <tr style="background: #ffebee;">
+                        <td><strong>Enregistrements expirés :</strong></td>
+                        <td style="<?php echo $stats->expired_records > 0 ? 'color: #d32f2f; font-weight: bold;' : ''; ?>">
+                            <?php echo number_format($stats->expired_records); ?> (<?php echo number_format($stats->total_expired_points); ?> points)
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <?php if (!empty($affected_users)): ?>
+        <div class="card" style="max-width: 1200px; background: white; padding: 20px; border-radius: 8px; margin-top: 20px;">
+            <h2>👥 Utilisateurs Affectés (Top 20)</h2>
+            <table class="widefat" style="margin-top: 15px;">
+                <thead>
+                    <tr>
+                        <th>Utilisateur</th>
+                        <th>Email</th>
+                        <th>Points Actifs</th>
+                        <th>Points Inactifs</th>
+                        <th>Points Expirés</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($affected_users as $user): ?>
+                    <tr>
+                        <td><?php echo esc_html($user->display_name); ?></td>
+                        <td><?php echo esc_html($user->user_email); ?></td>
+                        <td style="color: #4caf50;"><?php echo number_format($user->active_points); ?></td>
+                        <td style="<?php echo $user->inactive_points > 0 ? 'color: #f57c00; font-weight: bold;' : ''; ?>">
+                            <?php echo number_format($user->inactive_points); ?>
+                        </td>
+                        <td style="<?php echo $user->expired_points > 0 ? 'color: #d32f2f; font-weight: bold;' : ''; ?>">
+                            <?php echo number_format($user->expired_points); ?>
+                        </td>
+                        <td><strong><?php echo number_format($user->total_points); ?></strong></td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+        <?php endif; ?>
+        
+        <?php if ($stats->inactive_records > 0 || $stats->expired_records > 0): ?>
+        <div class="card" style="max-width: 800px; background: #e8f5e9; border-left: 4px solid #4caf50; padding: 20px; margin-top: 20px;">
+            <h2>🚀 Actions de Réactivation</h2>
+            
+            <form method="post" style="margin-top: 20px;">
+                <?php wp_nonce_field('loyalty_reactivate_points'); ?>
+                
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 10px;">
+                        <input type="radio" name="reactivate_type" value="inactive" required>
+                        <strong>Réactiver les points inactifs uniquement</strong>
+                        <p style="margin: 5px 0 0 25px; color: #666; font-size: 0.9em;">
+                            Réactive <?php echo number_format($stats->inactive_records); ?> enregistrement(s) (<?php echo number_format($stats->total_inactive_points); ?> points) 
+                            qui sont marqués comme inactifs mais pas encore expirés.
+                        </p>
+                    </label>
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 10px;">
+                        <input type="radio" name="reactivate_type" value="extend_expiry" required>
+                        <strong>Prolonger la date d'expiration de 6 mois</strong>
+                        <p style="margin: 5px 0 0 25px; color: #666; font-size: 0.9em;">
+                            Étend la date d'expiration de tous les points actifs non expirés de 6 mois supplémentaires.
+                        </p>
+                    </label>
+                </div>
+                
+                <?php if ($stats->expired_records > 0): ?>
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 10px;">
+                        <input type="radio" name="reactivate_type" value="reactivate_expired" required>
+                        <strong>Réactiver les points expirés</strong>
+                        <p style="margin: 5px 0 0 25px; color: #666; font-size: 0.9em;">
+                            Réactive <?php echo number_format($stats->expired_records); ?> enregistrement(s) (<?php echo number_format($stats->total_expired_points); ?> points) 
+                            qui ont déjà expiré et leur donne une nouvelle expiration de 6 mois.
+                        </p>
+                    </label>
+                </div>
+                <?php endif; ?>
+                
+                <p style="margin-top: 20px;">
+                    <button type="submit" name="reactivate_points" class="button button-primary button-large" 
+                            onclick="return confirm('⚠️ Cette action va modifier les enregistrements de points.\n\nLes paliers des utilisateurs seront automatiquement recalculés.\n\nContinuer ?');">
+                        🔓 Réactiver les Points
+                    </button>
+                </p>
+                
+                <p class="description" style="margin-top: 10px;">
+                    <strong>Note :</strong> Cette opération ne peut être annulée. Les points seront réactivés 
+                    et les paliers des utilisateurs seront automatiquement mis à jour.
+                </p>
+            </form>
+        </div>
+        <?php else: ?>
+        <div class="card" style="max-width: 800px; background: #f0f8ff; border-left: 4px solid #2196f3; padding: 20px; margin-top: 20px;">
+            <h2>✅ Tout est en ordre !</h2>
+            <p>
+                Tous les points actifs sont correctement configurés. Aucune action de réactivation n'est nécessaire.
+            </p>
+        </div>
+        <?php endif; ?>
+        
+        <div class="card" style="max-width: 800px; background: #fffbf0; border-left: 4px solid #ff9800; padding: 20px; margin-top: 20px;">
+            <h2>ℹ️ Informations Importantes</h2>
+            <ul style="list-style-type: disc; margin-left: 20px; line-height: 1.8;">
+                <li><strong>Points inactifs :</strong> Points marqués comme inactifs (is_active = 0) mais pas encore expirés</li>
+                <li><strong>Points expirés :</strong> Points dont la date d'expiration est dépassée</li>
+                <li><strong>Calcul des points disponibles :</strong> Seuls les points actifs ET non expirés sont comptabilisés</li>
+                <li><strong>Recalcul automatique :</strong> Les paliers sont recalculés après toute réactivation</li>
+                <li><strong>Impact :</strong> Les utilisateurs verront leurs points disponibles augmenter immédiatement</li>
+            </ul>
+        </div>
+    </div>
+    
+    <style>
+    .card {
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .card h2 {
+        margin-top: 0;
+        color: #333;
+        border-bottom: 2px solid #82897F;
+        padding-bottom: 10px;
     }
     </style>
     <?php

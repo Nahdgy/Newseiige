@@ -942,11 +942,16 @@ function newsaiige_render_loyalty_dashboard() {
             <div class="actions-section">
                 <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #f0f0f0;">
                     <h4>💡 Le saviez-vous ?</h4>
-                    <ul style="font-size: 0.9em; color: #666; line-height: 1.6;">
-                        <li>En étant abonné, vous bénéficiez de points bonus</li>
-                        <li>Pour tout les abonnés, un bonus d'anniversaire est offert chaque année</li> 
-                        <li>Les bons expirent 6 mois après leur émission</li>
+                    <ul>
+                        <li>Votre abonnement s’adapte à vous : augmentez ou réduisez vos soins quand vous en avez besoin.</li>
+                        <li>Et pour vous remercier de votre fidélité :</li>
+                        <ul>
+                            <li>Niveaux Argent et Or : 15% de réduction pour votre anniversaire.</li>
+                            <li>Niveau Platine : un soin offert rien que pour vous et 30% pour votre anniversaire</li>
+                        </ul>
                     </ul>
+
+                    <p>Parce que prendre soin de vous devrait toujours être simple et doux.</p>
                 </div>
             </div>
             <!-- Gains de points -->
