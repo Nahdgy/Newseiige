@@ -523,22 +523,18 @@ class NewsaiigeLoyaltySystemSafe {
         
         global $wpdb;
         
-        // Désactiver les points expirés
-        $wpdb->update(
-            $this->points_table,
-            array('is_active' => 0),
-            array('is_active' => 1),
-            array('%d'),
-            array('%d')
-        );
-        
-        $wpdb->query($wpdb->prepare(
+        // Désactiver UNIQUEMENT les points expirés (pas tous les points actifs)
+        $affected_rows = $wpdb->query(
             "UPDATE {$this->points_table} 
              SET is_active = 0 
              WHERE expires_at IS NOT NULL 
              AND expires_at < NOW() 
              AND is_active = 1"
-        ));
+        );
+        
+        if ($affected_rows > 0) {
+            error_log("cleanup_expired_data: {$affected_rows} points expirés désactivés");
+        }
     }
     
     /**
