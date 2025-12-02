@@ -80,6 +80,15 @@ function newsaiige_loyalty_admin_menu() {
         'newsaiige-loyalty-reactivate-points',
         'newsaiige_loyalty_reactivate_points_page'
     );
+    
+    add_submenu_page(
+        'newsaiige-loyalty',
+        'Retraiter les Points',
+        '♻️ Retraiter Points',
+        'manage_options',
+        'newsaiige-loyalty-reprocess-points',
+        'newsaiige_loyalty_reprocess_points_page'
+    );
 }
 
 // Page principale d'administration
@@ -826,8 +835,8 @@ function newsaiige_loyalty_users_page() {
         LEFT JOIN $tiers_table t ON ut.tier_id = t.id
         $where_clause
         GROUP BY u.ID
-        HAVING total_points > 0 OR available_points > 0
-        ORDER BY total_points DESC
+        HAVING COALESCE(SUM(p.points_earned), 0) > 0 OR COALESCE(SUM(CASE WHEN p.is_active = 1 AND (p.expires_at IS NULL OR p.expires_at > NOW()) THEN p.points_available ELSE 0 END), 0) > 0
+        ORDER BY COALESCE(SUM(p.points_earned), 0) DESC
         LIMIT 50
     ");
     
@@ -1883,11 +1892,11 @@ add_action('admin_notices', function() {
             WHERE u.ID IN (SELECT DISTINCT user_id FROM {$wpdb->prefix}newsaiige_loyalty_points)
             GROUP BY u.ID
             HAVING (
-                COALESCE(SUM(p.points_available), 0) < t.points_required OR
-                t.tier_name != (SELECT tier_name FROM {$wpdb->prefix}newsaiige_loyalty_tiers 
+                COALESCE(SUM(p.points_available), 0) < COALESCE(MAX(t.points_required), 0) OR
+                MAX(t.tier_name) != (SELECT tier_name FROM {$wpdb->prefix}newsaiige_loyalty_tiers 
                     WHERE points_required <= COALESCE(SUM(p.points_available), 0) AND is_active = 1
                     ORDER BY points_required DESC LIMIT 1) OR
-                t.tier_name IS NULL
+                MAX(t.tier_name) IS NULL
             )
         ) as subquery
     ");
@@ -2279,8 +2288,9 @@ function newsaiige_loyalty_reactivate_points_page() {
         FROM {$wpdb->users} u
         INNER JOIN {$points_table} p ON u.ID = p.user_id
         GROUP BY u.ID
-        HAVING inactive_points > 0 OR expired_points > 0
-        ORDER BY (inactive_points + expired_points) DESC
+        HAVING SUM(CASE WHEN p.is_active = 0 AND (p.expires_at IS NULL OR p.expires_at > NOW()) THEN p.points_available ELSE 0 END) > 0 
+            OR SUM(CASE WHEN p.expires_at IS NOT NULL AND p.expires_at <= NOW() THEN p.points_available ELSE 0 END) > 0
+        ORDER BY (SUM(CASE WHEN p.is_active = 0 AND (p.expires_at IS NULL OR p.expires_at > NOW()) THEN p.points_available ELSE 0 END) + SUM(CASE WHEN p.expires_at IS NOT NULL AND p.expires_at <= NOW() THEN p.points_available ELSE 0 END)) DESC
         LIMIT 20
     ");
     
@@ -2462,5 +2472,204 @@ function newsaiige_loyalty_reactivate_points_page() {
     }
     </style>
     <?php
+}
+
+/**
+ * Page d'administration pour retraiter les points
+ * Affiche les commandes qui n'ont pas eu de points attribués
+ */
+function newsaiige_loyalty_reprocess_points_page() {
+    if (!current_user_can('manage_options')) {
+        wp_die('Accès refusé');
+    }
+    
+    global $wpdb;
+    $points_system = NewsaiigeLoyaltySystemSafe::get_instance();
+    
+    // Traiter l'action de retraitement
+    $reprocess_count = 0;
+    $error_count = 0;
+    
+    if (isset($_POST['newsaiige_reprocess_action']) && $_POST['newsaiige_reprocess_action'] === 'reprocess') {
+        check_admin_referer('newsaiige_reprocess_nonce');
+        
+        if (isset($_POST['order_ids']) && is_array($_POST['order_ids'])) {
+            foreach ($_POST['order_ids'] as $order_id) {
+                $order_id = intval($order_id);
+                try {
+                    $points_system->process_order_points($order_id);
+                    $reprocess_count++;
+                } catch (Exception $e) {
+                    error_log("Erreur retraitement points commande #$order_id: " . $e->getMessage());
+                    $error_count++;
+                }
+            }
+            echo '<div class="notice notice-success is-dismissible"><p>';
+            echo sprintf(__('%d commande(s) retraitée(s), %d erreur(s)', 'newsaiige-loyalty'), $reprocess_count, $error_count);
+            echo '</p></div>';
+        }
+    }
+    
+    // Filtres de recherche
+    $search_user_id = isset($_GET['search_user_id']) ? intval($_GET['search_user_id']) : 0;
+    $search_months = isset($_GET['search_months']) ? intval($_GET['search_months']) : 12;
+    
+    // Récupérer les commandes sans points attribués
+    // Stratégie: chercher les commandes qui n'ont PAS de points dans wp_newsaiige_loyalty_points
+    $where_clauses = array(
+        "o.customer_id IS NOT NULL",
+        "o.customer_id > 0",
+        "o.type IN ('shop_order', 'wps_subscription', 'wps_subscriptions')",
+        "o.status IN ('wc-completed', 'wc-processing', 'wc-active')",
+        "o.total_amount > 0"
+    );
+    
+    // Filtre par utilisateur
+    if ($search_user_id > 0) {
+        $where_clauses[] = $wpdb->prepare("o.customer_id = %d", $search_user_id);
+    }
+    
+    // Filtre par date
+    if ($search_months > 0) {
+        $where_clauses[] = $wpdb->prepare("o.date_created_gmt >= DATE_SUB(NOW(), INTERVAL %d MONTH)", $search_months);
+    }
+    
+    $where_sql = implode(" AND ", $where_clauses);
+    
+    $missing_points_orders = $wpdb->get_results("
+        SELECT DISTINCT
+            o.id as order_id,
+            o.customer_id,
+            o.total_amount as total,
+            o.status,
+            o.type,
+            o.date_created_gmt as date_created,
+            u.display_name,
+            u.user_email as email
+        FROM {$wpdb->prefix}wc_orders o
+        LEFT JOIN {$wpdb->users} u ON o.customer_id = u.ID
+        WHERE {$where_sql}
+        AND NOT EXISTS (
+            SELECT 1 FROM {$wpdb->prefix}newsaiige_loyalty_points p 
+            WHERE p.order_id = o.id
+        )
+        ORDER BY o.date_created_gmt DESC
+        LIMIT 500
+    ");
+    
+    echo '<div class="wrap">';
+    echo '<h1>♻️ Retraiter Points</h1>';
+    echo '<p>Affiche les commandes/abonnements qui n\'ont pas eu de points attribués.</p>';
+    
+    // Formulaire de recherche
+    echo '<div class="card" style="max-width: 1200px; padding: 15px; margin-bottom: 20px; background: #f8f9fa;">';
+    echo '<form method="GET" action="" style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">';
+    echo '<input type="hidden" name="page" value="newsaiige-loyalty-reprocess-points">';
+    
+    echo '<div>';
+    echo '<label style="display: block; margin-bottom: 5px; font-weight: 600;">🔍 Rechercher par Utilisateur (ID)</label>';
+    echo '<input type="number" name="search_user_id" value="' . esc_attr($search_user_id) . '" placeholder="Ex: 123" style="width: 150px;">';
+    echo '</div>';
+    
+    echo '<div>';
+    echo '<label style="display: block; margin-bottom: 5px; font-weight: 600;">📅 Période (mois)</label>';
+    echo '<select name="search_months" style="width: 150px;">';
+    echo '<option value="1"' . ($search_months == 1 ? ' selected' : '') . '>1 mois</option>';
+    echo '<option value="3"' . ($search_months == 3 ? ' selected' : '') . '>3 mois</option>';
+    echo '<option value="6"' . ($search_months == 6 ? ' selected' : '') . '>6 mois</option>';
+    echo '<option value="12"' . ($search_months == 12 ? ' selected' : '') . '>12 mois</option>';
+    echo '<option value="24"' . ($search_months == 24 ? ' selected' : '') . '>24 mois</option>';
+    echo '<option value="0"' . ($search_months == 0 ? ' selected' : '') . '>Toutes</option>';
+    echo '</select>';
+    echo '</div>';
+    
+    echo '<div>';
+    echo '<button type="submit" class="button button-primary" style="margin-top: 0;">Filtrer</button>';
+    echo '<a href="?page=newsaiige-loyalty-reprocess-points" class="button" style="margin-left: 5px;">Réinitialiser</a>';
+    echo '</div>';
+    
+    echo '<div style="margin-left: auto; text-align: right; font-size: 13px; color: #666;">';
+    echo '<strong>Résultats :</strong> ' . count($missing_points_orders) . ' commande(s) trouvée(s)';
+    echo '</div>';
+    
+    echo '</form>';
+    echo '</div>';
+    
+    if (empty($missing_points_orders)) {
+        echo '<div class="notice notice-info"><p>✓ Toutes les commandes dans cette période ont des points attribués!</p></div>';
+    } else {
+        echo '<form method="POST" style="margin-top: 20px;">';
+        wp_nonce_field('newsaiige_reprocess_nonce');
+        echo '<input type="hidden" name="newsaiige_reprocess_action" value="reprocess">';
+        
+        echo '<table class="widefat fixed striped">';
+        echo '<thead>';
+        echo '<tr>';
+        echo '<th style="width: 30px;"><input type="checkbox" id="select-all-orders"></th>';
+        echo '<th>Commande ID</th>';
+        echo '<th>Client</th>';
+        echo '<th>Type</th>';
+        echo '<th>Statut</th>';
+        echo '<th>Montant</th>';
+        echo '<th>Points Estimés</th>';
+        echo '<th>Date</th>';
+        echo '</tr>';
+        echo '</thead>';
+        echo '<tbody>';
+        
+        foreach ($missing_points_orders as $order_data) {
+            $order = wc_get_order($order_data->order_id);
+            if (!$order) continue;
+            
+            $estimated_points = floor($order_data->total * floatval($points_system->get_setting('points_per_euro', 1)));
+            $customer_name = !empty($order_data->display_name) ? $order_data->display_name : 'Utilisateur #' . $order_data->customer_id;
+            
+            echo '<tr>';
+            echo '<td><input type="checkbox" name="order_ids[]" value="' . $order_data->order_id . '"></td>';
+            echo '<td><strong>#' . $order_data->order_id . '</strong></td>';
+            echo '<td><strong>' . esc_html($customer_name) . '</strong> <small>(ID: ' . $order_data->customer_id . ')</small><br><small>' . esc_html($order_data->email) . '</small></td>';
+            echo '<td><span style="' . ($order_data->type === 'wps_subscription' || $order_data->type === 'wps_subscriptions' ? 'color: green;' : '') . '">' . esc_html($order_data->type) . '</span></td>';
+            echo '<td><span style="background: #' . ($order_data->status === 'wc-completed' || $order_data->status === 'wc-active' ? '21ba45' : 'ff9800') . '; color: white; padding: 3px 8px; border-radius: 3px;">' . esc_html($order_data->status) . '</span></td>';
+            echo '<td>' . wc_price($order_data->total) . '</td>';
+            echo '<td><strong>' . $estimated_points . ' pts</strong></td>';
+            echo '<td>' . esc_html($order->get_date_created()->format('d/m/Y H:i')) . '</td>';
+            echo '</tr>';
+        }
+        
+        echo '</tbody>';
+        echo '</table>';
+        
+        echo '<div style="margin-top: 20px;">';
+        echo '<button type="submit" class="button button-primary">Retraiter les points sélectionnés</button>';
+        echo ' <span style="margin-left: 20px; color: #666;">Total: ' . count($missing_points_orders) . ' commande(s)</span>';
+        echo '</div>';
+        
+        echo '</form>';
+    }
+    
+    echo '<div class="card" style="max-width: 800px; background: #e3f2fd; border-left: 4px solid #2196f3; padding: 20px; margin-top: 30px;">';
+    echo '<h3>ℹ️ À Propos du Retraitement</h3>';
+    echo '<ul style="list-style-type: disc; margin-left: 20px;">';
+    echo '<li><strong>Commandes WPS :</strong> Abonnements détectés mais points non attribués</li>';
+    echo '<li><strong>Commandes Shop :</strong> Commandes régulières sans points</li>';
+    echo '<li><strong>Calcul :</strong> Points = Montant × ' . floatval($points_system->get_setting('points_per_euro', 1)) . ' pts/€</li>';
+    echo '<li><strong>Vérification :</strong> Les abonnements actifs vérifiés avant attribution</li>';
+    echo '</ul>';
+    echo '</div>';
+    
+    echo '</div>';
+    
+    // JavaScript pour sélection globale
+    echo '<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const selectAll = document.getElementById("select-all-orders");
+        if (selectAll) {
+            selectAll.addEventListener("change", function() {
+                const checkboxes = document.querySelectorAll("input[name=\"order_ids[]\"]");
+                checkboxes.forEach(cb => cb.checked = selectAll.checked);
+            });
+        }
+    });
+    </script>';
 }
 ?>

@@ -63,6 +63,7 @@ class NewsaiigeLoyaltySystemSafe {
         // Hook pour les tâches quotidiennes (sécurisé)
         add_action('newsaiige_daily_birthday_check', array($this, 'check_user_birthdays'));
         add_action('newsaiige_daily_cleanup', array($this, 'cleanup_expired_data'));
+        add_action('newsaiige_daily_subscription_check', array($this, 'daily_subscription_points_check'));
         
         // WooCommerce hooks - SEULEMENT si WooCommerce est disponible et qu'on n'est pas en conflit
         if (class_exists('WooCommerce') && !$this->is_processing_wc_action()) {
@@ -192,27 +193,45 @@ class NewsaiigeLoyaltySystemSafe {
     }
     
     /**
-     * Traiter les points d'une commande - Version sécurisée
+     * Traiter les points d'une commande - Version sécurisée et compatible HPOS
      */
     public function process_order_points($order_id) {
-        // Éviter les traitements multiples
-        if (get_post_meta($order_id, '_newsaiige_loyalty_processed', true)) {
-            return;
+        // Charger la commande en premier
+        $order = wc_get_order($order_id);
+        if (!$order) {
+            error_log("process_order_points: Commande #$order_id introuvable");
+            return false;
         }
         
-        // Marquer comme en cours de traitement
-        define('NEWSAIIGE_PROCESSING_WC', true);
-        
-        $order = wc_get_order($order_id);
-        if (!$order) return;
+        // Éviter les traitements multiples (compatible HPOS)
+        if ($order->get_meta('_newsaiige_loyalty_processed', true)) {
+            error_log("process_order_points: Commande #$order_id déjà traitée");
+            return false;
+        }
         
         $user_id = $order->get_user_id();
-        if (!$user_id) return;
+        if (!$user_id) {
+            error_log("process_order_points: Commande #$order_id sans utilisateur");
+            return false;
+        }
         
-        // Vérifier si l'utilisateur a un abonnement actif (si requis)
-        if ($this->get_setting('subscription_required', '1') === '1') {
-            if (!$this->has_active_subscription($user_id)) {
-                return;
+        // Déterminer le type de commande
+        $order_type = $order->get_type();
+        $order_status = $order->get_status();
+        
+        error_log("process_order_points: Traitement commande #$order_id - Type: $order_type - Statut: $order_status - User: $user_id");
+        
+        // IMPORTANT : Pour les abonnements WPS, attribuer les points directement
+        if ($order_type === 'wps_subscription' || $order_type === 'wps_subscriptions') {
+            error_log("process_order_points: ✓ C'est un abonnement WPS - Attribution automatique des points");
+        } else {
+            // Pour les commandes classiques, vérifier si l'utilisateur a un abonnement actif
+            if ($this->get_setting('subscription_required', '1') === '1') {
+                if (!$this->has_active_subscription($user_id)) {
+                    error_log("process_order_points: ✗ Commande #$order_id ignorée - User $user_id sans abonnement actif");
+                    return false;
+                }
+                error_log("process_order_points: ✓ User $user_id a un abonnement actif");
             }
         }
         
@@ -221,18 +240,30 @@ class NewsaiigeLoyaltySystemSafe {
         $points_per_euro = floatval($this->get_setting('points_per_euro', 1));
         $points_earned = floor($order_total * $points_per_euro);
         
+        error_log("process_order_points: Montant commande: {$order_total}€ × {$points_per_euro} = {$points_earned} points");
+        
         if ($points_earned > 0) {
-            $description = sprintf('Points gagnés pour la commande #%s', $order_id);
+            $description = sprintf('Points gagnés pour la commande #%s (%s)', $order_id, $order_type);
             
             if ($this->add_points($user_id, $points_earned, $order_id, 'order', $description)) {
-                // Marquer la commande comme traitée
-                update_post_meta($order_id, '_newsaiige_loyalty_processed', time());
+                // Marquer la commande comme traitée (compatible HPOS)
+                $order->update_meta_data('_newsaiige_loyalty_processed', time());
+                $order->save();
                 
                 // Ajouter une note à la commande
                 $order->add_order_note(
-                    sprintf('Programme de fidélité : %d points ajoutés au compte client.', $points_earned)
+                    sprintf('✓ Programme de fidélité : %d points ajoutés au compte client.', $points_earned)
                 );
+                
+                error_log("process_order_points: ✓✓✓ {$points_earned} points ATTRIBUÉS à user {$user_id} pour commande #{$order_id}");
+                return true;
+            } else {
+                error_log("process_order_points: ✗ ÉCHEC attribution points pour commande #$order_id");
+                return false;
             }
+        } else {
+            error_log("process_order_points: Commande #$order_id - Aucun point à attribuer (total: {$order_total}€)");
+            return false;
         }
     }
     
@@ -534,6 +565,93 @@ class NewsaiigeLoyaltySystemSafe {
         
         if ($affected_rows > 0) {
             error_log("cleanup_expired_data: {$affected_rows} points expirés désactivés");
+        }
+    }
+    
+    /**
+     * Vérification automatique quotidienne des paiements d'abonnement
+     * Attribue les points pour les paiements effectués la veille
+     */
+    public function daily_subscription_points_check() {
+        global $wpdb;
+        
+        error_log("daily_subscription_points_check: Démarrage de la vérification quotidienne");
+        
+        // Récupérer les commandes d'abonnement des dernières 48h sans points attribués
+        $recent_orders = $wpdb->get_results("
+            SELECT DISTINCT
+                o.id as order_id,
+                o.customer_id,
+                o.type,
+                o.status,
+                o.total_amount as total,
+                o.date_created_gmt as date_created
+            FROM {$wpdb->prefix}wc_orders o
+            WHERE o.type IN ('wps_subscription', 'wps_subscriptions', 'shop_order')
+            AND o.status IN ('wc-completed', 'wc-processing', 'wc-active')
+            AND o.total_amount > 0
+            AND o.customer_id > 0
+            AND o.date_created_gmt >= DATE_SUB(NOW(), INTERVAL 48 HOUR)
+            AND NOT EXISTS (
+                SELECT 1 FROM {$wpdb->prefix}newsaiige_loyalty_points p
+                WHERE p.order_id = o.id
+            )
+            ORDER BY o.date_created_gmt DESC
+        ");
+        
+        if (empty($recent_orders)) {
+            error_log("daily_subscription_points_check: Aucun paiement récent à traiter");
+            return;
+        }
+        
+        $processed_count = 0;
+        $error_count = 0;
+        
+        foreach ($recent_orders as $order_data) {
+            $order = wc_get_order($order_data->order_id);
+            
+            if (!$order) {
+                error_log("daily_subscription_points_check: Commande #{$order_data->order_id} introuvable");
+                $error_count++;
+                continue;
+            }
+            
+            // Vérifier si c'est un paiement d'abonnement ou une commande avec abonnement
+            $is_subscription = in_array($order_data->type, ['wps_subscription', 'wps_subscriptions']);
+            
+            if ($is_subscription) {
+                error_log("daily_subscription_points_check: Traitement paiement abonnement #{$order_data->order_id}");
+                
+                if ($this->process_order_points($order_data->order_id)) {
+                    $processed_count++;
+                    error_log("daily_subscription_points_check: ✓ Points attribués pour abonnement #{$order_data->order_id}");
+                } else {
+                    $error_count++;
+                    error_log("daily_subscription_points_check: ✗ Échec attribution points abonnement #{$order_data->order_id}");
+                }
+            } else {
+                // Pour les commandes classiques, vérifier si l'utilisateur a un abonnement
+                if ($this->has_active_subscription($order_data->customer_id)) {
+                    error_log("daily_subscription_points_check: Traitement commande #{$order_data->order_id} (user a abonnement)");
+                    
+                    if ($this->process_order_points($order_data->order_id)) {
+                        $processed_count++;
+                        error_log("daily_subscription_points_check: ✓ Points attribués pour commande #{$order_data->order_id}");
+                    } else {
+                        $error_count++;
+                        error_log("daily_subscription_points_check: ✗ Échec attribution points commande #{$order_data->order_id}");
+                    }
+                } else {
+                    error_log("daily_subscription_points_check: Commande #{$order_data->order_id} ignorée (pas d'abonnement)");
+                }
+            }
+        }
+        
+        error_log("daily_subscription_points_check: Terminé - {$processed_count} commandes traitées, {$error_count} erreurs");
+        
+        // Envoyer une notification admin si des points ont été attribués
+        if ($processed_count > 0) {
+            do_action('newsaiige_daily_points_attributed', $processed_count, $error_count);
         }
     }
     
