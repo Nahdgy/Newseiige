@@ -1013,9 +1013,9 @@ function newsaiige_generate_gift_card_code() {
         $code = 'NSGG-' . strtoupper(substr(str_shuffle('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 4)) . 
                 '-' . strtoupper(substr(str_shuffle('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'), 0, 4));
         
-        // Vérifier que le code n'existe pas déjà
+        // Vérifier que le code n'existe pas déjà (CORRECTION: utiliser 'code' au lieu de 'gift_card_code')
         $exists = $wpdb->get_var($wpdb->prepare(
-            "SELECT COUNT(*) FROM $table_name WHERE gift_card_code = %s",
+            "SELECT COUNT(*) FROM $table_name WHERE code = %s",
             $code
         ));
     } while ($exists > 0);
@@ -1137,43 +1137,85 @@ function newsaiige_create_gift_card_product($gift_card_data) {
 
 /**
  * Hook après paiement réussi pour traiter la carte cadeau
+ * IMPORTANT: S'exécute UNIQUEMENT quand la commande est PAYÉE et COMPLÉTÉE
  */
 function newsaiige_process_gift_card_after_payment($order_id) {
+    error_log("newsaiige_process_gift_card_after_payment: Démarrage pour commande #$order_id");
+    
     $order = wc_get_order($order_id);
     
     if (!$order) {
+        error_log("newsaiige_process_gift_card_after_payment: Commande #$order_id introuvable");
         return;
     }
+    
+    // Vérifier que la commande est bien payée
+    if (!$order->is_paid()) {
+        error_log("newsaiige_process_gift_card_after_payment: Commande #$order_id PAS ENCORE PAYÉE - Abandon");
+        return;
+    }
+    
+    error_log("newsaiige_process_gift_card_after_payment: Commande #$order_id trouvée et payée - Statut: " . $order->get_status());
+    
+    $items_count = count($order->get_items());
+    error_log("newsaiige_process_gift_card_after_payment: Commande #$order_id contient $items_count item(s)");
     
     foreach ($order->get_items() as $item) {
         $product = $item->get_product();
         
-        if ($product && $product->get_meta('_newsaiige_gift_card') === 'yes') {
+        if (!$product) {
+            error_log("newsaiige_process_gift_card_after_payment: Item sans produit trouvé");
+            continue;
+        }
+        
+        $is_gift_card = $product->get_meta('_newsaiige_gift_card');
+        error_log("newsaiige_process_gift_card_after_payment: Produit '" . $product->get_name() . "' - Meta _newsaiige_gift_card: " . var_export($is_gift_card, true));
+        
+        if ($is_gift_card === 'yes') {
+            error_log("newsaiige_process_gift_card_after_payment: ✓ C'est une carte cadeau!");
             $gift_card_data = $product->get_meta('_newsaiige_gift_card_data');
             
             if ($gift_card_data) {
+                error_log("newsaiige_process_gift_card_after_payment: Données carte cadeau trouvées - Quantité: " . $gift_card_data['quantity']);
+                
                 // Créer les cartes cadeaux dans la base de données
                 for ($i = 0; $i < $gift_card_data['quantity']; $i++) {
+                    error_log("newsaiige_process_gift_card_after_payment: Création carte #" . ($i + 1));
                     $card_code = newsaiige_create_gift_card_record($gift_card_data, $order_id);
                     
-                    // Si c'est une livraison physique, notifier l'admin
-                    if ($gift_card_data['delivery_type'] === 'physical' && $card_code) {
-                        newsaiige_notify_admin_physical_delivery($gift_card_data, $card_code, $order_id);
+                    if ($card_code) {
+                        error_log("newsaiige_process_gift_card_after_payment: ✓✓✓ Carte créée avec succès - Code: $card_code");
+                        
+                        // Si c'est une livraison physique, notifier l'admin
+                        if ($gift_card_data['delivery_type'] === 'physical') {
+                            error_log("newsaiige_process_gift_card_after_payment: Envoi notification admin pour livraison physique");
+                            newsaiige_notify_admin_physical_delivery($gift_card_data, $card_code, $order_id);
+                        }
+                    } else {
+                        error_log("newsaiige_process_gift_card_after_payment: ✗✗✗ ÉCHEC création carte #" . ($i + 1));
                     }
                 }
                 
+                error_log("newsaiige_process_gift_card_after_payment: Suppression produit temporaire ID: " . $product->get_id());
                 // Supprimer le produit temporaire
                 wp_delete_post($product->get_id(), true);
                 
                 // Programmer l'envoi des emails
+                error_log("newsaiige_process_gift_card_after_payment: Programmation envoi emails");
                 newsaiige_schedule_gift_card_emails($order_id, $gift_card_data);
+            } else {
+                error_log("newsaiige_process_gift_card_after_payment: ✗ Pas de données gift_card_data trouvées");
             }
         }
     }
+    
+    error_log("newsaiige_process_gift_card_after_payment: Fin du traitement pour commande #$order_id");
 }
 
-add_action('woocommerce_order_status_completed', 'newsaiige_process_gift_card_after_payment');
-add_action('woocommerce_order_status_processing', 'newsaiige_process_gift_card_after_payment');
+// CORRECTION: Utiliser 'payment_complete' qui s'exécute APRÈS confirmation du paiement
+add_action('woocommerce_payment_complete', 'newsaiige_process_gift_card_after_payment', 10, 1);
+// Hook de secours pour les paiements manuels (virement, chèque)
+add_action('woocommerce_order_status_completed', 'newsaiige_process_gift_card_after_payment', 10, 1);
 
 /**
  * Créer un enregistrement de carte cadeau en base
@@ -1182,13 +1224,16 @@ function newsaiige_create_gift_card_record($gift_card_data, $order_id) {
     global $wpdb;
     $table_name = $wpdb->prefix . 'newsaiige_gift_cards';
     
+    error_log("newsaiige_create_gift_card_record: Génération code pour commande #$order_id");
     $code = newsaiige_generate_gift_card_code();
     $expires_at = date('Y-m-d H:i:s', strtotime('+1 year'));
+    
+    error_log("newsaiige_create_gift_card_record: Code généré: $code - Expire: $expires_at");
     
     $result = $wpdb->insert(
         $table_name,
         array(
-            'gift_card_code' => $code,
+            'code' => $code, // CORRECTION: 'code' au lieu de 'gift_card_code'
             'amount' => $gift_card_data['amount'],
             'quantity' => 1, // Chaque enregistrement représente une carte
             'total_amount' => $gift_card_data['amount'],
@@ -1214,7 +1259,14 @@ function newsaiige_create_gift_card_record($gift_card_data, $order_id) {
         array('%s', '%f', '%d', '%f', '%f', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s')
     );
     
-    return $result ? $code : false;
+    if ($result) {
+        $insert_id = $wpdb->insert_id;
+        error_log("newsaiige_create_gift_card_record: ✓ Carte créée avec succès - ID: $insert_id - Code: $code");
+        return $code;
+    } else {
+        error_log("newsaiige_create_gift_card_record: ✗ ERREUR SQL: " . $wpdb->last_error);
+        return false;
+    }
 }
 
 /**
@@ -1320,7 +1372,7 @@ function newsaiige_get_gift_card_email_template($gift_card) {
                 <div class="gift-card">
                     <div class="amount"><?php echo number_format($gift_card->amount, 0, ',', ''); ?>€</div>
                     <p>Code de votre carte cadeau :</p>
-                    <div class="code"><?php echo esc_html($gift_card->gift_card_code); ?></div>
+                    <div class="code"><?php echo esc_html($gift_card->code); ?></div>
                     <p>Valable jusqu'au <?php echo date('d/m/Y', strtotime($gift_card->expires_at)); ?></p>
                 </div>
                 

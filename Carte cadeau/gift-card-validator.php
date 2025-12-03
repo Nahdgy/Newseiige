@@ -564,7 +564,7 @@ function newsaiige_gift_card_validator_shortcode($atts) {
             detailsHTML += `
                 <div class="result-row">
                     <span class="result-label">Code :</span>
-                    <span class="result-value" style="font-family: monospace;">${cardData.gift_card_code}</span>
+                    <span class="result-value" style="font-family: monospace;">${cardData.code}</span>
                 </div>
             `;
 
@@ -670,7 +670,7 @@ function newsaiige_validate_gift_card_code_public() {
     $table_name = $wpdb->prefix . 'newsaiige_gift_cards';
     
     $gift_card = $wpdb->get_row($wpdb->prepare(
-        "SELECT * FROM $table_name WHERE gift_card_code = %s",
+        "SELECT * FROM $table_name WHERE code = %s",
         $code
     ));
     
@@ -685,7 +685,7 @@ function newsaiige_validate_gift_card_code_public() {
     
     // Préparer les données de réponse
     $response_data = array(
-        'gift_card_code' => $gift_card->gift_card_code,
+        'code' => $gift_card->code,
         'amount' => number_format($gift_card->amount, 0, ',', ' '),
         'status' => $gift_card->status,
         'buyer_name' => $gift_card->buyer_name,

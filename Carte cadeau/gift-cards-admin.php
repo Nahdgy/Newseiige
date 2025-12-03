@@ -224,7 +224,7 @@ function newsaiige_gift_cards_admin_page() {
                                     <input type="checkbox" name="gift_card_ids[]" value="<?php echo $card->id; ?>">
                                 </th>
                                 <td>
-                                    <strong><?php echo esc_html($card->gift_card_code); ?></strong>
+                                    <strong><?php echo esc_html($card->code); ?></strong>
                                 </td>
                                 <td>
                                     <strong><?php echo number_format($card->amount, 2, ',', ' '); ?>€</strong>
@@ -412,7 +412,7 @@ function newsaiige_gift_cards_validate_page() {
             $message = '<div class="notice notice-error"><p>Veuillez saisir un code de carte cadeau.</p></div>';
         } else {
             $gift_card = $wpdb->get_row($wpdb->prepare(
-                "SELECT * FROM $table_name WHERE gift_card_code = %s",
+                "SELECT * FROM $table_name WHERE code = %s",
                 $code
             ));
             
@@ -492,7 +492,7 @@ function newsaiige_gift_cards_validate_page() {
                 <table class="form-table">
                     <tr>
                         <th>Code :</th>
-                        <td><strong style="font-family: monospace; font-size: 16px;"><?php echo esc_html($gift_card->gift_card_code); ?></strong></td>
+                        <td><strong style="font-family: monospace; font-size: 16px;"><?php echo esc_html($gift_card->code); ?></strong></td>
                     </tr>
                     <tr>
                         <th>Montant :</th>
@@ -525,7 +525,7 @@ function newsaiige_gift_cards_validate_page() {
                 </table>
                 
                 <form method="post" style="margin-top: 20px;">
-                    <input type="hidden" name="gift_card_code" value="<?php echo esc_attr($gift_card->gift_card_code); ?>">
+                    <input type="hidden" name="gift_card_code" value="<?php echo esc_attr($gift_card->code); ?>">
                     <input type="submit" name="use_card" class="button button-secondary button-large" value="Utiliser cette carte cadeau" 
                            onclick="return confirm('Êtes-vous sûr de vouloir utiliser cette carte cadeau ? Cette action est irréversible.');">
                 </form>
@@ -558,7 +558,7 @@ function newsaiige_gift_cards_validate_page() {
                     <tbody>
                         <?php foreach ($recent_used as $card): ?>
                         <tr>
-                            <td style="font-family: monospace;"><?php echo esc_html($card->gift_card_code); ?></td>
+                            <td style="font-family: monospace;"><?php echo esc_html($card->code); ?></td>
                             <td><strong><?php echo number_format($card->amount, 2, ',', ' '); ?>€</strong></td>
                             <td><?php echo date('d/m/Y H:i', strtotime($card->used_at)); ?></td>
                             <td><?php echo esc_html($card->buyer_name); ?></td>
@@ -911,7 +911,7 @@ add_action('wp_ajax_get_gift_card_details', function() {
     <table class="form-table">
         <tr>
             <th>Code :</th>
-            <td><strong style="font-family: monospace; font-size: 16px;"><?php echo esc_html($gift_card->gift_card_code); ?></strong></td>
+            <td><strong style="font-family: monospace; font-size: 16px;"><?php echo esc_html($gift_card->code); ?></strong></td>
         </tr>
         <tr>
             <th>Montant :</th>
