@@ -1,0 +1,23 @@
+{
+    "name": "newsaiige/gift-cards",
+    "description": "NewSaiige Gift Cards System - HTML Generation (No Dependencies)",
+    "type": "wordpress-plugin",
+    "license": "proprietary",
+    "authors": [
+        {
+            "name": "NewSaiige",
+            "email": "contact@newsaiige.com"
+        }
+    ],
+    "require": {
+        "php": ">=7.4"
+    },
+    "scripts": {
+        "test": [
+            "@php test-carte-cadeau.php"
+        ]
+    },
+    "config": {
+        "optimize-autoloader": true
+    }
+}

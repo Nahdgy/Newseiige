@@ -2,8 +2,8 @@
 /**
  * Plugin Name: NewSaiige Gift Cards
  * Plugin URI: https://newsaiige.com/gift-cards
- * Description: Système complet de cartes cadeaux pour WordPress avec intégration WooCommerce, paiement automatisé, envoi par email et interface d'administration.
- * Version: 1.0.0
+ * Description: Système complet de cartes cadeaux pour WordPress avec génération HTML, intégration WooCommerce, paiement automatisé, envoi par email et interface d'administration.
+ * Version: 2.0.0
  * Author: NewSaiige
  * Author URI: https://newsaiige.com
  * License: GPL v2 or later
@@ -25,7 +25,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Définir les constantes du plugin
-define('NEWSAIIGE_GIFT_CARDS_VERSION', '1.0.0');
+define('NEWSAIIGE_GIFT_CARDS_VERSION', '2.0.0');
 define('NEWSAIIGE_GIFT_CARDS_PLUGIN_FILE', __FILE__);
 define('NEWSAIIGE_GIFT_CARDS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('NEWSAIIGE_GIFT_CARDS_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -184,6 +184,16 @@ add_action('admin_menu', function() {
                             <li>• Les emails de commande sont activés</li>
                             <li>• Les produits virtuels sont autorisés</li>
                         </ul>
+                        
+                        <h3>4. Génération HTML des cartes</h3>
+                        <p>Le système génère des fichiers HTML élégants :</p>
+                        <ul>
+                            <li>• Les clients reçoivent un fichier HTML par email</li>
+                            <li>• Ouvrable dans n'importe quel navigateur</li>
+                            <li>• Imprimable en PDF (Ctrl+P → Enregistrer en PDF)</li>
+                            <li>• Format A5 paysage optimisé pour l'impression</li>
+                            <li>• Aucune bibliothèque externe requise</li>
+                        </ul>
                     </div>
                     
                     <div class="card">
@@ -191,12 +201,14 @@ add_action('admin_menu', function() {
                         <ul>
                             <li>✅ Formulaire de commande responsive</li>
                             <li>✅ Intégration complète WooCommerce</li>
+                            <li>✅ Génération HTML (imprimable en PDF)</li>
                             <li>✅ Génération automatique de codes uniques</li>
                             <li>✅ Envoi automatique par email</li>
                             <li>✅ Interface d'administration complète</li>
                             <li>✅ Validation publique des codes</li>
                             <li>✅ Gestion des expirations</li>
                             <li>✅ Statistiques détaillées</li>
+                            <li>✅ Aucune dépendance externe requise</li>
                         </ul>
                     </div>
                     

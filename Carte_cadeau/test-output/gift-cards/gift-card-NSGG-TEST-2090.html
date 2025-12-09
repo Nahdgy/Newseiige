@@ -1,0 +1,213 @@
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Carte Cadeau NewSaiige - NSGG-TEST-2090</title>
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700&display=swap');
+            
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            
+            body {
+                font-family: 'Montserrat', sans-serif;
+                width: 210mm;
+                height: 148.5mm;
+                margin: 0;
+                padding: 0;
+                background: white;
+            }
+            
+            .gift-card {
+                width: 210mm;
+                height: 148.5mm;
+                position: relative;
+                background-image: url('file:///C:/Users/wheee/Documents/WordPress/Newseiige/Carte_cadeau//assets/gift-card-background.jpg');
+                background-size: cover;
+                background-position: center;
+                background-repeat: no-repeat;
+                padding: 20mm;
+                display: flex;
+                align-items: center;
+                overflow: hidden;
+            }
+            
+            .gift-card::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(255, 255, 255, 0.1);
+            }
+            
+            .left-section {
+                flex: 1;
+                position: relative;
+                z-index: 1;
+                color: white;
+                text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            }
+            
+            .left-section h1 {
+                font-size: 36pt;
+                font-weight: 700;
+                text-transform: uppercase;
+                line-height: 1.2;
+                margin-bottom: 10mm;
+            }
+            
+            .left-section .subtitle {
+                font-size: 18pt;
+                font-weight: 300;
+                margin-bottom: 5mm;
+            }
+            
+            .left-section .brand {
+                font-size: 14pt;
+                font-weight: 600;
+                letter-spacing: 2px;
+            }
+            
+            .left-section .tagline {
+                font-size: 9pt;
+                line-height: 1.6;
+                margin-top: 15mm;
+                max-width: 80mm;
+            }
+            
+            .right-section {
+                width: 100mm;
+                background: rgba(255, 255, 255, 0.95);
+                backdrop-filter: blur(10px);
+                border-radius: 15px;
+                padding: 15mm;
+                position: relative;
+                z-index: 1;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            }
+            
+            .field {
+                margin-bottom: 8mm;
+            }
+            
+            .field-label {
+                font-size: 9pt;
+                font-weight: 700;
+                color: #555;
+                margin-bottom: 2mm;
+                display: block;
+            }
+            
+            .field-value {
+                font-size: 10pt;
+                color: #333;
+                line-height: 1.4;
+                min-height: 5mm;
+            }
+            
+            .field-value.large {
+                font-size: 14pt;
+                font-weight: 600;
+                color: #82897F;
+            }
+            
+            .field-value.code {
+                font-size: 11pt;
+                font-weight: 700;
+                color: #82897F;
+                letter-spacing: 1px;
+                background: #f8f9fa;
+                padding: 3mm;
+                border-radius: 5px;
+                text-align: center;
+            }
+            
+            .field.message .field-value {
+                font-size: 8pt;
+                font-style: italic;
+                max-height: 15mm;
+                overflow: hidden;
+            }
+            
+            .footer {
+                position: absolute;
+                bottom: 5mm;
+                left: 0;
+                right: 0;
+                text-align: center;
+                font-size: 7pt;
+                color: #666;
+                z-index: 1;
+            }
+            
+            .footer div {
+                margin: 1mm 0;
+            }
+            
+            @media print {
+                body {
+                    margin: 0;
+                }
+                .gift-card {
+                    page-break-after: avoid;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="gift-card">
+            <div class="left-section">
+                <h1>Un moment<br>juste<br>POUR<br><span style="font-size: 48pt;">toi</span></h1>
+                <div class="subtitle">BON CADEAU</div>
+                <div class="brand">NEWSAIIGE</div>
+                <div class="tagline">
+                    NewSaiige c'est comme les chips, quand on commence on en devient ACCRO !<br>
+                    <strong>#NWSAIIGE</strong>
+                </div>
+            </div>
+            
+            <div class="right-section">
+                <div class="field">
+                    <span class="field-label">Pour :</span>
+                    <div class="field-value">Sophie Martin</div>
+                </div>
+                
+                <div class="field message">
+                    <span class="field-label">Un Petit Mot d'❤️ :</span>
+                    <div class="field-value">Joyeux anniversaire ! Profite bien de ce moment de détente que tu mérites tant. Bisous ❤️</div>
+                </div>
+                
+                <div class="field">
+                    <span class="field-label">Bon pour un Soin :</span>
+                    <div class="field-value large">50,00 EUR</div>
+                </div>
+                
+                <div class="field">
+                    <span class="field-label">De la part de :</span>
+                    <div class="field-value">Marie Dupont</div>
+                </div>
+                
+                <div class="field">
+                    <span class="field-label">N° Bon Cadeau :</span>
+                    <div class="field-value code">NSGG-TEST-2090</div>
+                </div>
+                
+                <div class="field">
+                    <span class="field-label">Valable jusqu'au :</span>
+                    <div class="field-value">08/12/2026</div>
+                </div>
+            </div>
+            
+            <div class="footer">
+                <div><strong>NEWSAIIGE</strong> - 175 av. Frédéric Mistral - 83150 La Garde</div>
+                <div>Réservation sur Planity - 06 64 77 97 33</div>
+            </div>
+        </div>
+    </body>
+    </html>
+    
