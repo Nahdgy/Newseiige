@@ -221,18 +221,13 @@ class NewsaiigeLoyaltySystemSafe {
         
         error_log("process_order_points: Traitement commande #$order_id - Type: $order_type - Statut: $order_status - User: $user_id");
         
-        // IMPORTANT : Pour les abonnements WPS, attribuer les points directement
+        // IMPORTANT : Seuls les abonnements WPS reçoivent des points automatiquement
         if ($order_type === 'wps_subscription' || $order_type === 'wps_subscriptions') {
             error_log("process_order_points: ✓ C'est un abonnement WPS - Attribution automatique des points");
         } else {
-            // Pour les commandes classiques, vérifier si l'utilisateur a un abonnement actif
-            if ($this->get_setting('subscription_required', '1') === '1') {
-                if (!$this->has_active_subscription($user_id)) {
-                    error_log("process_order_points: ✗ Commande #$order_id ignorée - User $user_id sans abonnement actif");
-                    return false;
-                }
-                error_log("process_order_points: ✓ User $user_id a un abonnement actif");
-            }
+            // Les commandes shop_order ne reçoivent PAS de points
+            error_log("process_order_points: ✗ Commande #$order_id de type '$order_type' ignorée - Seuls les abonnements WPS reçoivent des points");
+            return false;
         }
         
         // Calculer les points (1 point par euro dépensé par défaut)
@@ -269,15 +264,16 @@ class NewsaiigeLoyaltySystemSafe {
     
     /**
      * Vérifier si un utilisateur a un abonnement WPS Subscriptions actif
+     * UNIQUEMENT les abonnements wps_subscriptions sont acceptés
      */
     public function has_active_subscription($user_id) {
         global $wpdb;
         
-        // PRIORITÉ 1 : Vérifier dans wc_orders (HPOS activé - WPS Subscriptions)
+        // PRIORITÉ 1 : Vérifier dans wc_orders (HPOS activé - WPS Subscriptions UNIQUEMENT)
         $hpos_subscription = $wpdb->get_var($wpdb->prepare(
             "SELECT COUNT(*)
              FROM {$wpdb->prefix}wc_orders
-             WHERE type = 'wps_subscriptions'
+             WHERE type IN ('wps_subscriptions', 'wps_subscription')
              AND customer_id = %d
              AND status IN ('wc-active', 'wc-pending-cancel', 'wc-wps_renewal', 'active')
              LIMIT 1",
@@ -285,16 +281,16 @@ class NewsaiigeLoyaltySystemSafe {
         ));
         
         if ($hpos_subscription > 0) {
-            error_log("has_active_subscription: User {$user_id} a un abonnement WPS actif (HPOS)");
+            error_log("has_active_subscription: ✓ User {$user_id} a un abonnement WPS actif (HPOS)");
             return true;
         }
         
-        // PRIORITÉ 2 : Vérifier dans wp_posts (HPOS non activé - WPS Subscriptions)
+        // PRIORITÉ 2 : Vérifier dans wp_posts (HPOS non activé - WPS Subscriptions UNIQUEMENT)
         $post_subscription = $wpdb->get_var($wpdb->prepare(
             "SELECT COUNT(*)
              FROM {$wpdb->posts} p
              INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
-             WHERE p.post_type = 'wps_subscriptions'
+             WHERE p.post_type IN ('wps_subscriptions', 'wps_subscription')
              AND pm.meta_key = '_customer_user'
              AND pm.meta_value = %d
              AND p.post_status IN ('wc-active', 'wc-pending-cancel', 'wc-wps_renewal', 'active')
@@ -303,122 +299,12 @@ class NewsaiigeLoyaltySystemSafe {
         ));
         
         if ($post_subscription > 0) {
-            error_log("has_active_subscription: User {$user_id} a un abonnement WPS actif (wp_posts)");
+            error_log("has_active_subscription: ✓ User {$user_id} a un abonnement WPS actif (wp_posts)");
             return true;
         }
         
-        // PRIORITÉ 3 : Vérifier les commandes shop_order avec statut wc-processing (HPOS)
-        $hpos_processing_order = $wpdb->get_var($wpdb->prepare(
-            "SELECT COUNT(*)
-             FROM {$wpdb->prefix}wc_orders
-             WHERE type = 'shop_order'
-             AND customer_id = %d
-             AND status = 'wc-processing'
-             LIMIT 1",
-            $user_id
-        ));
-        
-        if ($hpos_processing_order > 0) {
-            error_log("has_active_subscription: User {$user_id} a une commande en cours (HPOS shop_order wc-processing)");
-            return true;
-        }
-        
-        // PRIORITÉ 4 : Vérifier les commandes shop_order avec statut wc-processing (wp_posts)
-        $post_processing_order = $wpdb->get_var($wpdb->prepare(
-            "SELECT COUNT(*)
-             FROM {$wpdb->posts} p
-             INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
-             WHERE p.post_type = 'shop_order'
-             AND pm.meta_key = '_customer_user'
-             AND pm.meta_value = %d
-             AND p.post_status = 'wc-processing'
-             LIMIT 1",
-            $user_id
-        ));
-        
-        if ($post_processing_order > 0) {
-            error_log("has_active_subscription: User {$user_id} a une commande en cours (wp_posts shop_order wc-processing)");
-            return true;
-        }
-        
-        // PRIORITÉ 3 : Méthode de secours avec les commandes classiques
-        $subscription_category = $this->get_setting('subscription_category_slug', 'soins');
-        
-        if (empty($subscription_category)) {
-            return true; // Si pas de catégorie définie, considérer comme valide
-        }
-        
-        // Rechercher les commandes avec des produits de la catégorie soins
-        $orders = wc_get_orders(array(
-            'customer' => $user_id,
-            'status' => array('completed', 'processing', 'on-hold'),
-            'limit' => -1,
-            'orderby' => 'date',
-            'order' => 'DESC'
-        ));
-        
-        foreach ($orders as $order) {
-            $order_date = $order->get_date_created();
-            if (!$order_date) {
-                continue;
-            }
-            
-            foreach ($order->get_items() as $item) {
-                $product = $item->get_product();
-                if (!$product) {
-                    continue;
-                }
-                
-                // Pour les variations, vérifier le produit parent
-                $product_id = $product->get_id();
-                if ($product->is_type('variation')) {
-                    $product_id = $product->get_parent_id();
-                }
-                
-                // Vérifier si le produit est dans la catégorie "soins"
-                if (has_term($subscription_category, 'product_cat', $product_id)) {
-                    // Calculer la durée de l'abonnement basée sur les attributs de variation
-                    $subscription_duration_days = 30; // Par défaut 1 mois
-                    
-                    // Si c'est une variation, récupérer la durée depuis les attributs
-                    if ($product->is_type('variation')) {
-                        $attributes = $product->get_variation_attributes();
-                        
-                        // Chercher l'attribut de durée (ex: "1-mois", "3-mois", "6-mois")
-                        foreach ($attributes as $key => $value) {
-                            if (stripos($key, 'duree') !== false || stripos($key, 'duration') !== false || stripos($key, 'mois') !== false) {
-                                // Extraire le nombre de mois
-                                if (preg_match('/(\d+)/', $value, $matches)) {
-                                    $months = intval($matches[1]);
-                                    $subscription_duration_days = $months * 30;
-                                }
-                                break;
-                            }
-                        }
-                        
-                        // Alternative : vérifier dans le nom du produit
-                        $product_name = strtolower($item->get_name());
-                        if (preg_match('/(\d+)\s*mois/', $product_name, $matches)) {
-                            $months = intval($matches[1]);
-                            $subscription_duration_days = $months * 30;
-                        }
-                    }
-                    
-                    // Calculer la date d'expiration de l'abonnement
-                    $order_timestamp = $order_date->getTimestamp();
-                    $expiration_timestamp = $order_timestamp + ($subscription_duration_days * 24 * 60 * 60);
-                    $current_timestamp = current_time('timestamp');
-                    
-                    // Vérifier si l'abonnement est toujours actif
-                    if ($current_timestamp <= $expiration_timestamp) {
-                        error_log("has_active_subscription: User {$user_id} a un abonnement actif (commande #{$order->get_id()}, expire le " . date('Y-m-d', $expiration_timestamp) . ")");
-                        return true;
-                    }
-                }
-            }
-        }
-        
-        error_log("has_active_subscription: User {$user_id} n'a pas d'abonnement actif");
+        // Aucun abonnement WPS trouvé
+        error_log("has_active_subscription: ✗ User {$user_id} n'a AUCUN abonnement WPS actif (shop_order ignoré)");
         return false;
     }
     
@@ -577,7 +463,7 @@ class NewsaiigeLoyaltySystemSafe {
         
         error_log("daily_subscription_points_check: Démarrage de la vérification quotidienne");
         
-        // Récupérer les commandes d'abonnement des dernières 48h sans points attribués
+        // Récupérer UNIQUEMENT les abonnements WPS des dernières 48h sans points attribués
         $recent_orders = $wpdb->get_results("
             SELECT DISTINCT
                 o.id as order_id,
@@ -587,7 +473,7 @@ class NewsaiigeLoyaltySystemSafe {
                 o.total_amount as total,
                 o.date_created_gmt as date_created
             FROM {$wpdb->prefix}wc_orders o
-            WHERE o.type IN ('wps_subscription', 'wps_subscriptions', 'shop_order')
+            WHERE o.type IN ('wps_subscription', 'wps_subscriptions')
             AND o.status IN ('wc-completed', 'wc-processing', 'wc-active')
             AND o.total_amount > 0
             AND o.customer_id > 0

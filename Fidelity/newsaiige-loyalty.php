@@ -87,7 +87,8 @@ class NewsaiigeLoyaltyPlugin {
             'includes/admin.php',
             'includes/system.php', 
             'includes/woocommerce.php',
-            'includes/birthday-system.php'
+            'includes/birthday-system.php',
+            'includes/cron.php'  // Gestion des tâches automatiques
         );
         
         foreach ($files_to_load as $file) {

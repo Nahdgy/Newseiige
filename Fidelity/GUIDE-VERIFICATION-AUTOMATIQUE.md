@@ -203,10 +203,8 @@ ORDER BY p.created_at DESC;
 2. Pour chaque commande :
    - Vérifier si des points existent déjà (table wp_newsaiige_loyalty_points)
    - SI NON :
-     * Si type = wps_subscription → Attribuer points automatiquement
-     * Si type = shop_order → Vérifier si user a abonnement actif
-       - Si OUI → Attribuer points
-       - Si NON → Ignorer
+     * Si type = wps_subscription OU wps_subscriptions → Attribuer points automatiquement
+     * Si type = shop_order → NE PAS attribuer de points (seuls les abonnements donnent des points)
        
 3. Logger chaque opération
 4. Envoyer notification si points attribués

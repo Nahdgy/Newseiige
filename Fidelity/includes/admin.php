@@ -805,6 +805,67 @@ function newsaiige_loyalty_users_page() {
         echo '</p></div>';
     }
     
+    // Nettoyer les utilisateurs sans abonnement WPS
+    if (isset($_POST['cleanup_non_subscribers']) && check_admin_referer('loyalty_check_subscriptions')) {
+        $removed_users = 0;
+        $checked_users = 0;
+        $kept_users = 0;
+        
+        // Récupérer tous les utilisateurs du programme de fidélité
+        $loyalty_users = $wpdb->get_results("
+            SELECT DISTINCT user_id 
+            FROM {$wpdb->prefix}newsaiige_loyalty_user_tiers
+        ");
+        
+        foreach ($loyalty_users as $loyalty_user) {
+            $checked_users++;
+            $user_id = $loyalty_user->user_id;
+            $user = get_user_by('ID', $user_id);
+            
+            if (!$user) {
+                continue;
+            }
+            
+            // Vérifier si l'utilisateur a un abonnement WPS actif
+            $has_wps_subscription = $newsaiige_loyalty && $newsaiige_loyalty->has_active_subscription($user_id);
+            
+            if (!$has_wps_subscription) {
+                // Retirer l'utilisateur du programme de fidélité
+                
+                // 1. Supprimer le palier
+                $wpdb->delete(
+                    $wpdb->prefix . 'newsaiige_loyalty_user_tiers',
+                    array('user_id' => $user_id)
+                );
+                
+                // 2. Désactiver tous les points (ne pas supprimer pour garder l'historique)
+                $wpdb->update(
+                    $points_table,
+                    array('is_active' => 0),
+                    array('user_id' => $user_id)
+                );
+                
+                $removed_users++;
+                error_log("cleanup_non_subscribers: ✓ User {$user_id} ({$user->user_email}) retiré - Aucun abonnement WPS");
+            } else {
+                $kept_users++;
+                error_log("cleanup_non_subscribers: ✓ User {$user_id} ({$user->user_email}) conservé - Abonnement WPS actif");
+            }
+        }
+        
+        echo '<div class="notice notice-success is-dismissible"><p>';
+        echo sprintf(
+            '<strong>🧹 Nettoyage terminé !</strong><br>' .
+            '• %d utilisateurs vérifiés<br>' .
+            '• %d utilisateurs conservés (avec abonnement WPS)<br>' .
+            '• %d utilisateurs retirés (sans abonnement WPS)',
+            $checked_users,
+            $kept_users,
+            $removed_users
+        );
+        echo '</p></div>';
+    }
+    
     // Recherche d'utilisateurs
     $search = isset($_GET['search']) ? sanitize_text_field($_GET['search']) : '';
     $where_clause = '';
@@ -963,6 +1024,11 @@ function newsaiige_loyalty_users_page() {
                             style="background: #82897F; border-color: #82897F;"
                             onclick="return confirm('🔍 Cette action va vérifier TOUS les utilisateurs avec des abonnements actifs et les ajouter au programme de fidélité s\'ils n\'en font pas déjà partie.\n\nCela peut prendre quelques minutes.\n\nContinuer ?');">
                         🔍 Vérifier TOUS les Abonnés
+                    </button>
+                    <button type="submit" name="cleanup_non_subscribers" class="button button-secondary" 
+                            style="background: #dc3545; border-color: #dc3545; color: white; margin-left: 10px;"
+                            onclick="return confirm('⚠️ ATTENTION : Cette action va retirer du programme de fidélité TOUS les utilisateurs qui n\'ont PAS d\'abonnement WPS actif.\n\nLes utilisateurs avec uniquement des commandes shop_order seront retirés.\n\nCette action est IRRÉVERSIBLE.\n\nContinuer ?');">
+                        🧹 Nettoyer les non-abonnés
                     </button>
                 </p>
             </form>
