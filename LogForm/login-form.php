@@ -95,6 +95,32 @@ function newsaiige_login_form_shortcode($atts) {
         position: relative;
     }
 
+    .newsaiige-password-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .newsaiige-toggle-password {
+        position: absolute;
+        right: 20px;
+        cursor: pointer;
+        width: 24px;
+        height: 24px;
+        opacity: 0.6;
+        transition: opacity 0.3s ease;
+        z-index: 10;
+    }
+
+    .newsaiige-toggle-password:hover {
+        opacity: 1;
+    }
+
+    .newsaiige-toggle-password svg {
+        width: 100%;
+        height: 100%;
+    }
+
     .newsaiige-form-input {
         width: 100%;
         padding: 10px 25px !important;
@@ -337,11 +363,21 @@ function newsaiige_login_form_shortcode($atts) {
             </div>
 
             <div class="newsaiige-form-group">
-                <input type="password" 
-                       name="pwd" 
-                       class="newsaiige-form-input" 
-                       placeholder="Mot de passe" 
-                       required>
+                <div class="newsaiige-password-wrapper">
+                    <input type="password" 
+                           name="pwd" 
+                           id="login_password"
+                           class="newsaiige-form-input" 
+                           placeholder="Mot de passe" 
+                           required>
+                    <span class="newsaiige-toggle-password" onclick="togglePasswordVisibility('login_password', this)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path class="eye-open" d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle class="eye-open" cx="12" cy="12" r="3"></circle>
+                            <line class="eye-closed" x1="1" y1="1" x2="23" y2="23" style="display:none;"></line>
+                        </svg>
+                    </span>
+                </div>
             </div>
 
             <div class="newsaiige-forgot-password">
@@ -380,6 +416,22 @@ function newsaiige_login_form_shortcode($atts) {
     </div>
 
     <script>
+    function togglePasswordVisibility(inputId, icon) {
+        const input = document.getElementById(inputId);
+        const eyeOpen = icon.querySelectorAll('.eye-open');
+        const eyeClosed = icon.querySelectorAll('.eye-closed');
+        
+        if (input.type === 'password') {
+            input.type = 'text';
+            eyeOpen.forEach(el => el.style.display = 'none');
+            eyeClosed.forEach(el => el.style.display = 'block');
+        } else {
+            input.type = 'password';
+            eyeOpen.forEach(el => el.style.display = 'block');
+            eyeClosed.forEach(el => el.style.display = 'none');
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         // Animation d'entrée
         const container = document.querySelector('.newsaiige-auth-container');
