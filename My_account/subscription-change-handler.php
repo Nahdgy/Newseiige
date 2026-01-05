@@ -180,7 +180,89 @@ function newsaiige_change_subscription() {
         $old_variation_name = $current_variation->get_name();
         $new_variation_name = $new_variation->get_name();
         
-        // Mettre à jour l'item avec la nouvelle variation
+        // ÉTAPE 1: Vérifier si c'est un abonnement WooCommerce et le gérer
+        if (function_exists('wcs_get_subscriptions_for_order')) {
+            $subscriptions = wcs_get_subscriptions_for_order($order_id, array('order_type' => 'any'));
+            
+            foreach ($subscriptions as $subscription) {
+                // Vérifier que l'abonnement contient bien le produit concerné
+                foreach ($subscription->get_items() as $sub_item) {
+                    if ($sub_item->get_variation_id() == $current_variation_id) {
+                        // ANNULER L'ANCIEN ABONNEMENT
+                        $subscription->update_status('cancelled', 'Abonnement annulé suite au changement de formule par le client');
+                        
+                        // Ajouter une note explicative
+                        $subscription->add_order_note(sprintf(
+                            'Ancien abonnement annulé automatiquement. Changement : %s → %s',
+                            $old_variation_name,
+                            $new_variation_name
+                        ));
+                        
+                        // CRÉER UN NOUVEL ABONNEMENT avec la nouvelle variation
+                        $new_subscription = wcs_create_subscription(array(
+                            'order_id' => $order_id,
+                            'customer_id' => $subscription->get_customer_id(),
+                            'billing_period' => $subscription->get_billing_period(),
+                            'billing_interval' => $subscription->get_billing_interval(),
+                            'start_date' => current_time('mysql'),
+                            'status' => 'active'
+                        ));
+                        
+                        if ($new_subscription) {
+                            // Ajouter le nouvel item de produit
+                            $new_item = new WC_Order_Item_Product();
+                            $new_item->set_props(array(
+                                'product' => $new_variation,
+                                'variation_id' => $new_variation_id,
+                                'quantity' => $quantity,
+                                'subtotal' => $new_price * $quantity,
+                                'total' => $new_price * $quantity,
+                            ));
+                            
+                            // Ajouter les métadonnées de variation
+                            $variation_attributes = $new_variation->get_variation_attributes();
+                            foreach ($variation_attributes as $key => $value) {
+                                $new_item->add_meta_data($key, $value, true);
+                            }
+                            
+                            $new_subscription->add_item($new_item);
+                            
+                            // Copier les adresses de facturation et de livraison
+                            $new_subscription->set_address($subscription->get_address('billing'), 'billing');
+                            $new_subscription->set_address($subscription->get_address('shipping'), 'shipping');
+                            
+                            // Calculer les totaux
+                            $new_subscription->calculate_totals();
+                            
+                            // Ajouter une note au nouvel abonnement
+                            $new_subscription->add_order_note(sprintf(
+                                'Nouvel abonnement créé suite au changement de formule : %s → %s',
+                                $old_variation_name,
+                                $new_variation_name
+                            ));
+                            
+                            // Mettre à jour les dates de prélèvement
+                            $next_payment = $subscription->get_time('next_payment');
+                            if ($next_payment) {
+                                $new_subscription->update_dates(array(
+                                    'next_payment' => date('Y-m-d H:i:s', $next_payment)
+                                ));
+                            }
+                            
+                            $new_subscription->save();
+                            
+                            // Stocker l'ID du nouvel abonnement dans la commande
+                            $order->update_meta_data('_new_subscription_id', $new_subscription->get_id());
+                            $order->update_meta_data('_old_subscription_id', $subscription->get_id());
+                        }
+                        
+                        break; // Sortir de la boucle des items
+                    }
+                }
+            }
+        }
+        
+        // ÉTAPE 2: Mettre à jour l'item de la commande originale pour l'historique
         $item->set_variation_id($new_variation_id);
         $item->set_product($new_variation);
         $item->set_subtotal($new_price * $quantity);
@@ -199,7 +281,7 @@ function newsaiige_change_subscription() {
         
         // Ajouter une note à la commande
         $note = sprintf(
-            'Abonnement modifié par le client : %s → %s (Différence de prix : %s - sera appliquée au prochain prélèvement)',
+            'Abonnement modifié par le client : %s → %s (Ancien abonnement annulé, nouveau créé. Différence de prix : %s)',
             $old_variation_name,
             $new_variation_name,
             wc_price($total_difference)
@@ -212,18 +294,12 @@ function newsaiige_change_subscription() {
         $order->save();
         
         // Message selon le type de changement
+        $message = 'Abonnement modifié avec succès ! Votre ancien abonnement a été annulé et un nouvel abonnement a été créé avec votre nouvelle formule.';
+        
         if ($total_difference > 0) {
-            $message = sprintf(
-                'Abonnement modifié avec succès ! La différence de %s sera ajoutée à votre prochain prélèvement.',
-                wc_price($total_difference)
-            );
+            $message .= sprintf(' Votre prochain prélèvement sera de %s.', wc_price($new_price * $quantity));
         } else if ($total_difference < 0) {
-            $message = sprintf(
-                'Abonnement modifié avec succès ! La différence de %s sera déduite de votre prochain prélèvement.',
-                wc_price(abs($total_difference))
-            );
-        } else {
-            $message = 'Abonnement modifié avec succès !';
+            $message .= sprintf(' Votre prochain prélèvement sera de %s.', wc_price($new_price * $quantity));
         }
         
         // Envoyer un email de confirmation au client
@@ -265,6 +341,7 @@ function newsaiige_send_subscription_change_email($order, $old_variation, $new_v
             .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
             .change-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #82897F; }
             .info-box { background: #e8f4f8; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #2196F3; }
+            .warning-box { background: #fff3cd; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ffc107; }
             .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
         </style>
     </head>
@@ -290,23 +367,31 @@ function newsaiige_send_subscription_change_email($order, $old_variation, $new_v
                     <?php endif; ?>
                 </div>
                 
+                <div class="warning-box">
+                    <p style="margin: 0; color: #856404;">
+                        <strong>⚠️ Important :</strong><br>
+                        Votre ancien abonnement a été automatiquement <strong>annulé</strong> et un nouvel abonnement a été créé avec votre nouvelle formule.<br>
+                        Vous ne serez plus prélevé pour l'ancien abonnement.
+                    </p>
+                </div>
+                
                 <?php if ($price_difference > 0): ?>
                     <div class="info-box">
                         <p style="margin: 0; color: #1976d2;">
-                            ℹ️ <strong>Impact sur votre prochain prélèvement :</strong><br>
-                            La différence de <?php echo wc_price($price_difference); ?> sera ajoutée à votre prochain prélèvement automatique.
+                            ℹ️ <strong>Votre prochain prélèvement :</strong><br>
+                            Vous serez désormais prélevé de <?php echo wc_price($order->get_total()); ?> pour votre nouvel abonnement.
                         </p>
                     </div>
                 <?php elseif ($price_difference < 0): ?>
                     <div class="info-box">
                         <p style="margin: 0; color: #1976d2;">
-                            ℹ️ <strong>Impact sur votre prochain prélèvement :</strong><br>
-                            La différence de <?php echo wc_price(abs($price_difference)); ?> sera déduite de votre prochain prélèvement automatique.
+                            ℹ️ <strong>Votre prochain prélèvement :</strong><br>
+                            Vous serez désormais prélevé de <?php echo wc_price($order->get_total()); ?> pour votre nouvel abonnement.
                         </p>
                     </div>
                 <?php endif; ?>
                 
-                <p>Votre nouvel abonnement est maintenant actif et sera pris en compte dès maintenant.</p>
+                <p>Votre nouvel abonnement est maintenant actif et le prochain prélèvement se fera à la date prévue avec le nouveau montant.</p>
                 
                 <p>Si vous avez des questions, n'hésitez pas à nous contacter.</p>
                 
