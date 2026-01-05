@@ -25,16 +25,11 @@ function newsaiige_payment_methods_shortcode($atts) {
         $user_id
     ));
     
-    // Enqueue les scripts nécessaires
-    wp_enqueue_script('newsaiige-payment-js', '', array('jquery'), '1.0', true);
-    wp_add_inline_script('newsaiige-payment-js', '
-        const newsaiige_payment_ajax = {
-            ajax_url: "' . admin_url('admin-ajax.php') . '",
-            nonce: "' . wp_create_nonce('newsaiige_payment_nonce') . '"
-        };
-    ');
-    
     ob_start();
+    
+    // Préparer les variables JavaScript
+    $ajax_url = admin_url('admin-ajax.php');
+    $nonce = wp_create_nonce('newsaiige_payment_nonce');
     ?>
 
     <style>
@@ -575,6 +570,12 @@ function newsaiige_payment_methods_shortcode($atts) {
     </div>
 
     <script>
+    // Configuration AJAX
+    const newsaiige_payment_ajax = {
+        ajax_url: "<?php echo esc_url($ajax_url); ?>",
+        nonce: "<?php echo esc_js($nonce); ?>"
+    };
+
     // Variables globales
     let selectedCardType = '';
 
