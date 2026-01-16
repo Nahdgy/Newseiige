@@ -113,18 +113,35 @@ class NewsaiigeLoyaltySystemSafe {
     }
     
     /**
-     * Ajouter des points - Version sécurisée
+     * Ajouter des points - Version sécurisée avec logs détaillés
      */
     public function add_points($user_id, $points, $order_id = null, $action_type = 'manual', $description = '') {
-        if (!$this->table_exists($this->points_table) || $points <= 0) {
+        global $wpdb;
+        
+        // Vérification 1: Points valides
+        if ($points <= 0) {
+            error_log("add_points: ÉCHEC - Points invalides ({$points}) pour user {$user_id}");
             return false;
         }
         
-        global $wpdb;
+        // Vérification 2: Table existe
+        if (!$this->table_exists($this->points_table)) {
+            error_log("add_points: ÉCHEC - Table {$this->points_table} inexistante pour user {$user_id}");
+            return false;
+        }
+        
+        // Vérification 3: L'utilisateur existe dans WordPress
+        $user = get_userdata($user_id);
+        if (!$user) {
+            error_log("add_points: ÉCHEC - Utilisateur #{$user_id} n'existe pas dans wp_users");
+            return false;
+        }
         
         // Calculer l'expiration (6 mois par défaut)
         $expiry_days = intval($this->get_setting('points_expiry_days', 183));
         $expires_at = date('Y-m-d H:i:s', strtotime("+{$expiry_days} days"));
+        
+        error_log("add_points: Tentative insertion - User: {$user_id} ({$user->user_email}) | Points: {$points} | Order: {$order_id} | Action: {$action_type}");
         
         $result = $wpdb->insert(
             $this->points_table,
@@ -141,15 +158,26 @@ class NewsaiigeLoyaltySystemSafe {
             array('%d', '%d', '%d', '%d', '%s', '%s', '%s', '%d')
         );
         
-        if ($result) {
-            // Vérifier si l'utilisateur mérite une promotion de palier
-            $this->check_tier_upgrade($user_id);
-            
-            // Hook pour les actions personnalisées
-            do_action('newsaiige_points_added', $user_id, $points, $order_id);
+        if ($result === false) {
+            // Log de l'erreur SQL détaillée
+            error_log("add_points: ÉCHEC SQL - User: {$user_id} | Erreur: {$wpdb->last_error}");
+            error_log("add_points: Dernière requête: {$wpdb->last_query}");
+            return false;
         }
         
-        return $result !== false;
+        $insert_id = $wpdb->insert_id;
+        error_log("add_points: ✓✓✓ SUCCÈS - {$points} points ajoutés (ID: {$insert_id}) pour user {$user_id} ({$user->user_email})");
+        
+        // Vérifier si l'utilisateur mérite une promotion de palier
+        $tier_upgrade_result = $this->check_tier_upgrade($user_id);
+        if ($tier_upgrade_result) {
+            error_log("add_points: Palier mis à jour pour user {$user_id}");
+        }
+        
+        // Hook pour les actions personnalisées
+        do_action('newsaiige_points_added', $user_id, $points, $order_id);
+        
+        return true;
     }
     
     /**
@@ -194,8 +222,10 @@ class NewsaiigeLoyaltySystemSafe {
     
     /**
      * Traiter les points d'une commande - Version sécurisée et compatible HPOS
+     * @param int $order_id ID de la commande
+     * @param bool $force Forcer le retraitement même si déjà traitée (pour retraitement manuel)
      */
-    public function process_order_points($order_id) {
+    public function process_order_points($order_id, $force = false) {
         // Charger la commande en premier
         $order = wc_get_order($order_id);
         if (!$order) {
@@ -203,10 +233,23 @@ class NewsaiigeLoyaltySystemSafe {
             return false;
         }
         
-        // Éviter les traitements multiples (compatible HPOS)
-        if ($order->get_meta('_newsaiige_loyalty_processed', true)) {
-            error_log("process_order_points: Commande #$order_id déjà traitée");
+        // Éviter les traitements multiples (sauf si force = true)
+        if (!$force && $order->get_meta('_newsaiige_loyalty_processed', true)) {
+            error_log("process_order_points: Commande #$order_id déjà traitée (utilisez force=true pour retraiter)");
             return false;
+        }
+        
+        // Si force=true, supprimer les anciens points pour cette commande
+        if ($force) {
+            global $wpdb;
+            $deleted = $wpdb->delete(
+                $this->points_table,
+                array('order_id' => $order_id),
+                array('%d')
+            );
+            if ($deleted > 0) {
+                error_log("process_order_points: FORCE MODE - {$deleted} ancien(s) enregistrement(s) de points supprimé(s) pour commande #{$order_id}");
+            }
         }
         
         $user_id = $order->get_user_id();
@@ -221,12 +264,35 @@ class NewsaiigeLoyaltySystemSafe {
         
         error_log("process_order_points: Traitement commande #$order_id - Type: $order_type - Statut: $order_status - User: $user_id");
         
-        // IMPORTANT : Seuls les abonnements WPS reçoivent des points automatiquement
+        // LOGIQUE D'ATTRIBUTION DES POINTS
+        $should_receive_points = false;
+        
+        // CAS 1 : C'est un abonnement WPS → Attribution automatique
         if ($order_type === 'wps_subscription' || $order_type === 'wps_subscriptions') {
-            error_log("process_order_points: ✓ C'est un abonnement WPS - Attribution automatique des points");
-        } else {
-            // Les commandes shop_order ne reçoivent PAS de points
-            error_log("process_order_points: ✗ Commande #$order_id de type '$order_type' ignorée - Seuls les abonnements WPS reçoivent des points");
+            error_log("process_order_points: ✓ Abonnement WPS détecté - Attribution automatique des points");
+            $should_receive_points = true;
+        }
+        // CAS 2 : C'est une commande normale → Vérifier si l'utilisateur a un abonnement actif
+        else if ($order_type === 'shop_order') {
+            error_log("process_order_points: Commande shop_order - Vérification de l'abonnement actif...");
+            
+            if ($this->has_active_subscription($user_id)) {
+                error_log("process_order_points: ✓ Utilisateur a un abonnement actif - Attribution des points");
+                $should_receive_points = true;
+            } else {
+                error_log("process_order_points: ✗ Utilisateur SANS abonnement actif - Commande #$order_id ignorée");
+                return false;
+            }
+        }
+        // CAS 3 : Autre type de commande → Ignorer
+        else {
+            error_log("process_order_points: ✗ Type de commande '$order_type' non géré - Commande #$order_id ignorée");
+            return false;
+        }
+        
+        // Si on arrive ici, les points doivent être attribués
+        if (!$should_receive_points) {
+            error_log("process_order_points: ✗ Conditions non remplies pour commande #$order_id");
             return false;
         }
         
@@ -264,47 +330,73 @@ class NewsaiigeLoyaltySystemSafe {
     
     /**
      * Vérifier si un utilisateur a un abonnement WPS Subscriptions actif
-     * UNIQUEMENT les abonnements wps_subscriptions sont acceptés
+     * CORRECTION : Les abonnements WPS ont customer_id=0, on utilise billing_email
      */
     public function has_active_subscription($user_id) {
         global $wpdb;
         
-        // PRIORITÉ 1 : Vérifier dans wc_orders (HPOS activé - WPS Subscriptions UNIQUEMENT)
-        $hpos_subscription = $wpdb->get_var($wpdb->prepare(
-            "SELECT COUNT(*)
+        // Récupérer l'email de l'utilisateur
+        $user = get_userdata($user_id);
+        if (!$user) {
+            error_log("has_active_subscription: ✗ User {$user_id} n'existe pas");
+            return false;
+        }
+        
+        $user_email = $user->user_email;
+        
+        // MÉTHODE 1 : Vérifier dans wc_orders par BILLING_EMAIL (car customer_id = 0)
+        // Les abonnements WPS ont customer_id=0 mais billing_email correct
+        $hpos_subscription = $wpdb->get_row($wpdb->prepare(
+            "SELECT id, status, billing_email
              FROM {$wpdb->prefix}wc_orders
-             WHERE type IN ('wps_subscriptions', 'wps_subscription')
+             WHERE type = 'wps_subscriptions'
+             AND billing_email = %s
+             AND status NOT IN ('auto-draft', 'trash', 'wc-cancelled', 'wc-expired', 'wc-failed')
+             LIMIT 1",
+            $user_email
+        ));
+        
+        if ($hpos_subscription) {
+            error_log("has_active_subscription: ✓ User {$user_id} ({$user_email}) a un abonnement WPS actif (ID:{$hpos_subscription->id}, statut:{$hpos_subscription->status}) trouvé par EMAIL");
+            return true;
+        }
+        
+        // MÉTHODE 2 : Fallback par customer_id (au cas où certains sont bien remplis)
+        $hpos_by_id = $wpdb->get_row($wpdb->prepare(
+            "SELECT id, status
+             FROM {$wpdb->prefix}wc_orders
+             WHERE type = 'wps_subscriptions'
              AND customer_id = %d
-             AND status IN ('wc-active', 'wc-pending-cancel', 'wc-wps_renewal', 'active')
+             AND status NOT IN ('auto-draft', 'trash', 'wc-cancelled', 'wc-expired', 'wc-failed')
              LIMIT 1",
             $user_id
         ));
         
-        if ($hpos_subscription > 0) {
-            error_log("has_active_subscription: ✓ User {$user_id} a un abonnement WPS actif (HPOS)");
+        if ($hpos_by_id) {
+            error_log("has_active_subscription: ✓ User {$user_id} a un abonnement WPS actif (ID:{$hpos_by_id->id}, statut:{$hpos_by_id->status}) trouvé par customer_id");
             return true;
         }
         
-        // PRIORITÉ 2 : Vérifier dans wp_posts (HPOS non activé - WPS Subscriptions UNIQUEMENT)
+        // MÉTHODE 3 : Vérifier dans wp_posts
         $post_subscription = $wpdb->get_var($wpdb->prepare(
-            "SELECT COUNT(*)
+            "SELECT p.ID
              FROM {$wpdb->posts} p
              INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
-             WHERE p.post_type IN ('wps_subscriptions', 'wps_subscription')
+             WHERE (p.post_type = 'pms-subscription' OR p.post_type LIKE '%%wps%%subscription%%')
              AND pm.meta_key = '_customer_user'
              AND pm.meta_value = %d
-             AND p.post_status IN ('wc-active', 'wc-pending-cancel', 'wc-wps_renewal', 'active')
+             AND p.post_status NOT IN ('trash', 'auto-draft', 'wc-cancelled', 'wc-expired', 'cancelled', 'expired')
              LIMIT 1",
             $user_id
         ));
         
-        if ($post_subscription > 0) {
-            error_log("has_active_subscription: ✓ User {$user_id} a un abonnement WPS actif (wp_posts)");
+        if ($post_subscription) {
+            error_log("has_active_subscription: ✓ User {$user_id} a un abonnement actif (wp_posts ID:{$post_subscription})");
             return true;
         }
         
-        // Aucun abonnement WPS trouvé
-        error_log("has_active_subscription: ✗ User {$user_id} n'a AUCUN abonnement WPS actif (shop_order ignoré)");
+        // Aucun abonnement trouvé
+        error_log("has_active_subscription: ✗ User {$user_id} ({$user_email}) n'a AUCUN abonnement actif (cherché par email + customer_id)");
         return false;
     }
     
@@ -318,6 +410,7 @@ class NewsaiigeLoyaltySystemSafe {
         }
         
         $available_points = $this->get_user_points($user_id);
+        error_log("check_tier_upgrade: User {$user_id} a {$available_points} points disponibles");
         
         error_log("check_tier_upgrade: User {$user_id} a {$available_points} points disponibles");
         
@@ -456,27 +549,30 @@ class NewsaiigeLoyaltySystemSafe {
     
     /**
      * Vérification automatique quotidienne des paiements d'abonnement
-     * Attribue les points pour les paiements effectués la veille
+     * CORRECTION : Utilise billing_email car les abonnements WPS ont customer_id=0
      */
     public function daily_subscription_points_check() {
         global $wpdb;
         
         error_log("daily_subscription_points_check: Démarrage de la vérification quotidienne");
         
-        // Récupérer UNIQUEMENT les abonnements WPS des dernières 48h sans points attribués
+        // Récupérer les abonnements WPS des dernières 48h sans points attribués
+        // CORRECTION : Ne plus filtrer par customer_id > 0 car les abonnements WPS ont customer_id = 0
         $recent_orders = $wpdb->get_results("
             SELECT DISTINCT
                 o.id as order_id,
                 o.customer_id,
+                o.billing_email,
                 o.type,
                 o.status,
                 o.total_amount as total,
                 o.date_created_gmt as date_created
             FROM {$wpdb->prefix}wc_orders o
             WHERE o.type IN ('wps_subscription', 'wps_subscriptions')
-            AND o.status IN ('wc-completed', 'wc-processing', 'wc-active')
+            AND o.status NOT IN ('auto-draft', 'trash', 'wc-cancelled', 'wc-expired', 'wc-failed')
             AND o.total_amount > 0
-            AND o.customer_id > 0
+            AND o.billing_email IS NOT NULL
+            AND o.billing_email != ''
             AND o.date_created_gmt >= DATE_SUB(NOW(), INTERVAL 48 HOUR)
             AND NOT EXISTS (
                 SELECT 1 FROM {$wpdb->prefix}newsaiige_loyalty_points p
@@ -490,54 +586,61 @@ class NewsaiigeLoyaltySystemSafe {
             return;
         }
         
+        error_log("daily_subscription_points_check: " . count($recent_orders) . " abonnement(s) trouvé(s) sans points");
+        
         $processed_count = 0;
         $error_count = 0;
+        $skipped_no_user = 0;
         
         foreach ($recent_orders as $order_data) {
+            // Trouver l'utilisateur WordPress par son email
+            $user = get_user_by('email', $order_data->billing_email);
+            
+            if (!$user) {
+                error_log("daily_subscription_points_check: ⚠ Abonnement #{$order_data->order_id} - email {$order_data->billing_email} n'existe PAS dans wp_users");
+                $skipped_no_user++;
+                continue;
+            }
+            
+            $user_id = $user->ID;
+            
+            // Charger la commande via WooCommerce
             $order = wc_get_order($order_data->order_id);
             
             if (!$order) {
-                error_log("daily_subscription_points_check: Commande #{$order_data->order_id} introuvable");
+                error_log("daily_subscription_points_check: Abonnement #{$order_data->order_id} introuvable via wc_get_order()");
                 $error_count++;
                 continue;
             }
             
-            // Vérifier si c'est un paiement d'abonnement ou une commande avec abonnement
-            $is_subscription = in_array($order_data->type, ['wps_subscription', 'wps_subscriptions']);
+            // Mettre à jour le user_id de la commande si c'est 0
+            if ($order_data->customer_id == 0) {
+                $order->set_customer_id($user_id);
+                $order->save();
+                error_log("daily_subscription_points_check: Customer_id mis à jour pour abonnement #{$order_data->order_id}: 0 → {$user_id}");
+            }
             
-            if ($is_subscription) {
-                error_log("daily_subscription_points_check: Traitement paiement abonnement #{$order_data->order_id}");
-                
-                if ($this->process_order_points($order_data->order_id)) {
-                    $processed_count++;
-                    error_log("daily_subscription_points_check: ✓ Points attribués pour abonnement #{$order_data->order_id}");
-                } else {
-                    $error_count++;
-                    error_log("daily_subscription_points_check: ✗ Échec attribution points abonnement #{$order_data->order_id}");
-                }
+            error_log("daily_subscription_points_check: Traitement abonnement #{$order_data->order_id} - User: {$user_id} ({$order_data->billing_email}) - Montant: {$order_data->total}€");
+            
+            if ($this->process_order_points($order_data->order_id)) {
+                $processed_count++;
+                error_log("daily_subscription_points_check: ✓✓✓ Points attribués pour abonnement #{$order_data->order_id}");
             } else {
-                // Pour les commandes classiques, vérifier si l'utilisateur a un abonnement
-                if ($this->has_active_subscription($order_data->customer_id)) {
-                    error_log("daily_subscription_points_check: Traitement commande #{$order_data->order_id} (user a abonnement)");
-                    
-                    if ($this->process_order_points($order_data->order_id)) {
-                        $processed_count++;
-                        error_log("daily_subscription_points_check: ✓ Points attribués pour commande #{$order_data->order_id}");
-                    } else {
-                        $error_count++;
-                        error_log("daily_subscription_points_check: ✗ Échec attribution points commande #{$order_data->order_id}");
-                    }
-                } else {
-                    error_log("daily_subscription_points_check: Commande #{$order_data->order_id} ignorée (pas d'abonnement)");
-                }
+                $error_count++;
+                error_log("daily_subscription_points_check: ✗✗✗ ÉCHEC attribution points abonnement #{$order_data->order_id}");
             }
         }
         
-        error_log("daily_subscription_points_check: Terminé - {$processed_count} commandes traitées, {$error_count} erreurs");
+        error_log("daily_subscription_points_check: === RÉSUMÉ === Traitées: {$processed_count} | Erreurs: {$error_count} | Sans utilisateur: {$skipped_no_user}");
         
         // Envoyer une notification admin si des points ont été attribués
         if ($processed_count > 0) {
             do_action('newsaiige_daily_points_attributed', $processed_count, $error_count);
+        }
+        
+        // Alerte si des utilisateurs n'existent pas
+        if ($skipped_no_user > 0) {
+            error_log("daily_subscription_points_check: ⚠⚠⚠ ALERTE: {$skipped_no_user} abonnement(s) avec email inconnu dans wp_users");
         }
     }
     

@@ -2563,8 +2563,15 @@ function newsaiige_loyalty_reprocess_points_page() {
             foreach ($_POST['order_ids'] as $order_id) {
                 $order_id = intval($order_id);
                 try {
-                    $points_system->process_order_points($order_id);
-                    $reprocess_count++;
+                    // Force = true pour retraiter même si déjà marquée comme traitée
+                    $result = $points_system->process_order_points($order_id, true);
+                    if ($result) {
+                        $reprocess_count++;
+                        error_log("Retraitement manuel: ✓ Commande #{$order_id} traitée avec succès");
+                    } else {
+                        $error_count++;
+                        error_log("Retraitement manuel: ✗ Échec pour commande #{$order_id}");
+                    }
                 } catch (Exception $e) {
                     error_log("Erreur retraitement points commande #$order_id: " . $e->getMessage());
                     $error_count++;
