@@ -39,11 +39,11 @@ function newsaiige_payment_methods_shortcode($atts) {
     $ajax_url = admin_url('admin-ajax.php');
     $nonce = wp_create_nonce('newsaiige_payment_nonce');
 
+    $is_add_payment_endpoint = function_exists('is_wc_endpoint_url') && is_wc_endpoint_url('add-payment-method');
     $add_payment_form_html = '';
     ob_start();
     do_action('woocommerce_account_add-payment-method_endpoint');
     $add_payment_form_html = trim((string) ob_get_clean());
-
     $has_add_payment_form = !empty($add_payment_form_html);
 
     ob_start();
@@ -275,7 +275,7 @@ function newsaiige_payment_methods_shortcode($atts) {
     }
     </style>
 
-    <div class="newsaiige-payment-section">
+    <div class="newsaiige-payment-section" id="newsaiige-payment-section">
         <div class="payment-header">
             <h2 class="payment-title"><?php echo esc_html($atts['title']); ?></h2>
             <p class="payment-subtitle"><?php echo esc_html($atts['subtitle']); ?></p>
@@ -327,20 +327,31 @@ function newsaiige_payment_methods_shortcode($atts) {
             <?php endif; ?>
 
             <div class="payment-actions" style="margin-top:12px;">
-                <?php if ($has_add_payment_form) : ?>
-                    <button class="add-payment-btn" type="button" id="newsaiige-toggle-add-payment">+ Ajouter ou mettre à jour une carte</button>
-                <?php else : ?>
-                    <a class="add-payment-btn" href="<?php echo esc_url($add_payment_url); ?>">+ Ajouter ou mettre à jour une carte</a>
-                <?php endif; ?>
+                <button
+                    class="add-payment-btn"
+                    type="button"
+                    id="newsaiige-toggle-add-payment"
+                    data-redirect-url="<?php echo esc_url($add_payment_url); ?>"
+                    data-is-endpoint="<?php echo $is_add_payment_endpoint ? '1' : '0'; ?>"
+                >
+                    + Ajouter ou mettre à jour une carte
+                </button>
             </div>
 
             <?php if ($has_add_payment_form) : ?>
-                <div class="payment-add-panel" id="newsaiige-add-payment-panel">
+                <div class="payment-add-panel<?php echo $is_add_payment_endpoint ? ' is-open' : ''; ?>" id="newsaiige-add-payment-panel">
                     <?php echo $add_payment_form_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
                 </div>
+                <p class="payment-fallback-help">
+                    <?php if ($is_add_payment_endpoint) : ?>
+                        Formulaire natif WooCommerce charge sur cette page.
+                    <?php else : ?>
+                        Vous serez redirige vers l'URL native pour charger le formulaire, puis il s'affichera dans ce panneau.
+                    <?php endif; ?>
+                </p>
             <?php else : ?>
                 <p class="payment-fallback-help">
-                    Si la page d'ajout de carte est vide, vérifiez qu'un moyen de paiement compatible tokenisation est activé dans WooCommerce.
+                    Si le formulaire n'apparait pas, verifiez qu'un moyen de paiement compatible tokenisation est active dans WooCommerce.
                 </p>
             <?php endif; ?>
         </div>
@@ -355,18 +366,152 @@ function newsaiige_payment_methods_shortcode($atts) {
     document.addEventListener('DOMContentLoaded', function() {
         const toggleBtn = document.getElementById('newsaiige-toggle-add-payment');
         const panel = document.getElementById('newsaiige-add-payment-panel');
+        const section = document.getElementById('newsaiige-payment-section');
 
-        if (!toggleBtn || !panel) {
+        if (!toggleBtn) {
             return;
         }
 
         toggleBtn.addEventListener('click', function() {
-            panel.classList.toggle('is-open');
-            if (panel.classList.contains('is-open')) {
-                panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            const redirectUrl = toggleBtn.getAttribute('data-redirect-url');
+            const isEndpoint = toggleBtn.getAttribute('data-is-endpoint') === '1';
+
+            // Outside endpoint: redirect to native WooCommerce URL.
+            if (!isEndpoint && redirectUrl) {
+                try {
+                    sessionStorage.setItem('newsaiige_keep_payment_tab', '1');
+                } catch (e) {}
+
+                const targetUrl = buildPaymentTargetUrl(redirectUrl);
+
+                window.location.href = targetUrl;
+                return;
+            }
+
+            // On endpoint: keep inline behavior and toggle the embedded form panel.
+            if (panel) {
+                panel.classList.toggle('is-open');
+                if (panel.classList.contains('is-open')) {
+                    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
             }
         });
+
+        // On the endpoint, auto-open and focus the panel to make the flow explicit.
+        if (panel && toggleBtn.getAttribute('data-is-endpoint') === '1') {
+            panel.classList.add('is-open');
+        }
+
+        // Restore active tab after full page navigation in tabbed layouts (e.g. page builders).
+        restorePaymentTabState(section);
     });
+
+    function restorePaymentTabState(section) {
+        if (!section) {
+            return;
+        }
+
+        let shouldRestore = false;
+
+        try {
+            shouldRestore = sessionStorage.getItem('newsaiige_keep_payment_tab') === '1';
+            if (shouldRestore) {
+                sessionStorage.removeItem('newsaiige_keep_payment_tab');
+            }
+        } catch (e) {}
+
+        if (new URLSearchParams(window.location.search).get('newsaiige_payment_tab') === '1') {
+            shouldRestore = true;
+            // Clean the helper query arg to avoid polluting copied URLs.
+            if (window.history && window.history.replaceState) {
+                const cleanUrl = new URL(window.location.href);
+                cleanUrl.searchParams.delete('newsaiige_payment_tab');
+                window.history.replaceState({}, document.title, cleanUrl.toString());
+            }
+        }
+
+        if (window.location.hash === '#newsaiige-payment-section') {
+            shouldRestore = true;
+        }
+
+        if (!shouldRestore) {
+            return;
+        }
+
+        const attempts = [0, 150, 500, 1000];
+        attempts.forEach(function(delay) {
+            setTimeout(function() {
+                activateContainerTab(section);
+            }, delay);
+        });
+    }
+
+    function activateContainerTab(section) {
+        // Elementor nested tabs: enforce tab #4 (Mes infos de paiement).
+        const explicitOrderTab = document.querySelector('.e-n-tabs-heading [role="tab"][data-tab-index="4"], .e-n-tab-title[data-tab-index="4"]');
+        if (explicitOrderTab) {
+            explicitOrderTab.click();
+        }
+
+        const panel = section.closest('[role="tabpanel"], .e-n-tab-content, .elementor-tab-content, .tab-pane, .tabs-panel');
+        if (panel && panel.id) {
+            const escapedId = cssEscapeSelector(panel.id);
+            const controller = document.querySelector(
+                '[aria-controls="' + escapedId + '"]' +
+                ', [href="#' + escapedId + '"]' +
+                ', [data-tab="#' + escapedId + '"]'
+            );
+
+            if (controller) {
+                controller.click();
+            }
+        }
+
+        // Elementor/Nested Tabs fallback by known order or payment wording.
+        const orderTab = document.querySelector('.e-n-tab-title[style*="--n-tabs-title-order: 4"]');
+        if (orderTab) {
+            orderTab.click();
+        }
+
+        const semanticTab = Array.prototype.find.call(
+            document.querySelectorAll('.e-n-tab-title, .elementor-tab-title, [role="tab"]'),
+            function(el) {
+                const txt = (el.textContent || '').toLowerCase();
+                return txt.indexOf('paiement') !== -1 || txt.indexOf('payment') !== -1 || txt.indexOf('carte') !== -1;
+            }
+        );
+
+        if (semanticTab) {
+            semanticTab.click();
+        }
+
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function buildPaymentTargetUrl(redirectUrl) {
+        try {
+            const parsed = new URL(redirectUrl, window.location.origin);
+            parsed.searchParams.set('newsaiige_payment_tab', '1');
+            parsed.hash = 'newsaiige-payment-section';
+            return parsed.toString();
+        } catch (e) {
+            const withQuery = redirectUrl.indexOf('?') === -1
+                ? redirectUrl + '?newsaiige_payment_tab=1'
+                : redirectUrl + '&newsaiige_payment_tab=1';
+
+            return withQuery.indexOf('#') === -1
+                ? withQuery + '#newsaiige-payment-section'
+                : withQuery;
+        }
+    }
+
+    function cssEscapeSelector(value) {
+        if (window.CSS && typeof window.CSS.escape === 'function') {
+            return window.CSS.escape(value);
+        }
+
+        return String(value).replace(/[^a-zA-Z0-9_-]/g, '\\$&');
+    }
 
     function setDefaultPaymentMethod(tokenId) {
         if (!confirm('Définir cette carte comme moyen de paiement par défaut ?')) {
