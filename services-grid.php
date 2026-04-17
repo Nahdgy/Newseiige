@@ -247,7 +247,7 @@ function newsaiige_services_grid_shortcode($atts) {
                 $services = array(
                     array(
                         'name' => 'La madérothérapie',
-                        'duration_price' => '50min / 65€',
+                        'duration_price' => '50min / 70€',
                         'description' => 'Le massage anti-cellulite n°1',
                         'image' => 'http://newsaiige.com/wp-content/uploads/2025/10/maderotherapie.jpg',
                         'url' => 'https://www.planity.com/maderotherapie-newsaiige-83130-la-garde/reservation',
@@ -256,7 +256,7 @@ function newsaiige_services_grid_shortcode($atts) {
                     ),
                     array(
                         'name' => 'La madérothérapie énergétique',
-                        'duration_price' => '50min / 70€',
+                        'duration_price' => '50min / 75€',
                         'description' => 'Le soin drainant et détoxifiant',
                         'image' => 'http://newsaiige.com/wp-content/uploads/2025/10/madero_energie.jpg',
                         'url' => 'https://www.planity.com/maderotherapie-newsaiige-83130-la-garde/reservation',
@@ -265,7 +265,7 @@ function newsaiige_services_grid_shortcode($atts) {
                     ),
                     array(
                         'name' => 'La face madéro',
-                        'duration_price' => '50min / 65€',
+                        'duration_price' => '50min / 70€',
                         'description' => 'Un visage aux mille éclats',
                         'image' => 'http://newsaiige.com/wp-content/uploads/2025/10/face_medero-scaled.jpg',
                         'url' => 'https://www.planity.com/maderotherapie-newsaiige-83130-la-garde/reservation',

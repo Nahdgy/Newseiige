@@ -212,7 +212,7 @@ function newsaiige_submit_grid_page_shortcode($atts) {
                     array(
                         'name' => '1 SOIN PAR MOIS',
                         'duration_price' => '59€ / mois',
-                        'description' => 'Profitez d’une réduction jusqu’à 132€/an',
+                        'description' => 'Profitez d’une réduction jusqu’à 16€/mois',
                         'info'=>'(Valable 12 mois)',
                         'image' => 'http://newsaiige.com/wp-content/uploads/2025/10/banderole_soins.jpg',
                         'url' => 'https://newsaiige.com/product/soins/',
@@ -222,7 +222,7 @@ function newsaiige_submit_grid_page_shortcode($atts) {
                     array(
                         'name' => '2 SOINS PAR MOIS',
                         'duration_price' => '109€ / mois',
-                        'description' => 'Profitez d’une réduction jusqu’à 372€/an',
+                        'description' => 'Profitez d’une réduction jusqu’à 41€/mois',
                         'info'=>'(Valable 12 mois)',
                         'image' => 'http://newsaiige.com/wp-content/uploads/2025/10/maderotherapie.jpg',
                         'url' => 'https://newsaiige.com/product/soins/',
@@ -232,7 +232,7 @@ function newsaiige_submit_grid_page_shortcode($atts) {
                     array(
                         'name' => '3 SOINS PAR MOIS',
                         'duration_price' => '159€ / mois',
-                        'description' => 'Profitez d’une réduction jusqu’à 612€/an',
+                        'description' => 'Profitez d’une réduction jusqu’à 66€/mois',
                         'info'=>'(Valable 12 mois)',
                         'image' => 'http://newsaiige.com/wp-content/uploads/2025/10/650ce0d8a825e72901a8e88dec62aa6eb67bb878.jpg',
                         'url' => 'https://newsaiige.com/product/soins/',
@@ -242,7 +242,7 @@ function newsaiige_submit_grid_page_shortcode($atts) {
                     array(
                         'name' => '4 SOINS PAR MOIS',
                         'duration_price' => '205€ / mois',
-                        'description' => 'Profite d’une réduction jusqu’à 900€/an',
+                        'description' => 'Profitez d’une réduction jusqu’à 95€/mois',
                         'info'=>'(1ère consultation)',
                         'image' => 'http://newsaiige.com/wp-content/uploads/2025/10/maderotherapie.jpg',
                         'url' => 'https://newsaiige.com/product/soins/',
