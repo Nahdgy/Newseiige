@@ -118,6 +118,7 @@ class NewSaiige_Gift_Cards {
         
         // Charger les fichiers principaux
         $this->load_file('gift-cards.php');
+        $this->load_file('gift-card-pdf-simple.php');
         $this->load_file('gift-card-validator.php');
         
         // Charger l'admin en dernier et vérifier qu'il est chargé

@@ -28,6 +28,60 @@ function newsaiige_generate_gift_card_pdf_simple($gift_card) {
     }
 }
 
+/**
+ * Generer la piece jointe la plus compatible pour l'email.
+ * Priorite: ZIP contenant le HTML (moins susceptible d'etre bloque) puis fallback HTML.
+ *
+ * @param object $gift_card Donnees de la carte cadeau
+ * @return string|false Chemin du fichier a joindre
+ */
+function newsaiige_generate_gift_card_email_attachment($gift_card) {
+    $html_path = newsaiige_generate_gift_card_pdf_simple($gift_card);
+
+    if (empty($html_path) || !file_exists($html_path)) {
+        error_log('newsaiige_generate_gift_card_email_attachment: HTML introuvable pour la carte ' . ($gift_card->code ?? 'inconnue'));
+        return false;
+    }
+
+    $zip_path = dirname($html_path) . '/gift-card-' . $gift_card->code . '.zip';
+
+    // Methode 1: extension ZipArchive si disponible
+    if (class_exists('ZipArchive')) {
+        $zip = new ZipArchive();
+        if ($zip->open($zip_path, ZipArchive::CREATE | ZipArchive::OVERWRITE) === true) {
+            $zip->addFile($html_path, basename($html_path));
+            $zip->close();
+
+            if (file_exists($zip_path) && filesize($zip_path) > 0) {
+                error_log('newsaiige_generate_gift_card_email_attachment: ZIP genere via ZipArchive - ' . $zip_path);
+                return $zip_path;
+            }
+        }
+    }
+
+    // Methode 2: fallback PclZip (lib incluse WordPress)
+    if (defined('ABSPATH')) {
+        $pclzip_file = ABSPATH . 'wp-admin/includes/class-pclzip.php';
+        if (file_exists($pclzip_file)) {
+            require_once $pclzip_file;
+
+            if (class_exists('PclZip')) {
+                $archive = new PclZip($zip_path);
+                $result = $archive->create($html_path, PCLZIP_OPT_REMOVE_PATH, dirname($html_path));
+
+                if ($result !== 0 && file_exists($zip_path) && filesize($zip_path) > 0) {
+                    error_log('newsaiige_generate_gift_card_email_attachment: ZIP genere via PclZip - ' . $zip_path);
+                    return $zip_path;
+                }
+            }
+        }
+    }
+
+    // Fallback final: retourner le HTML brut
+    error_log('newsaiige_generate_gift_card_email_attachment: ZIP indisponible, fallback HTML - ' . $html_path);
+    return $html_path;
+}
+
 
 
 /**

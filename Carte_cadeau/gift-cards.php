@@ -10,6 +10,20 @@ if (!defined('ABSPATH')) {
 }
 
 /**
+ * Montant minimum autorise pour une carte cadeau.
+ *
+ * Mode test: definir NEWSAIIGE_GIFT_CARD_ALLOW_ZERO_AMOUNT a true
+ * dans wp-config.php pour autoriser temporairement 0 EUR.
+ */
+function newsaiige_gift_card_min_amount() {
+    if (defined('NEWSAIIGE_GIFT_CARD_ALLOW_ZERO_AMOUNT') && NEWSAIIGE_GIFT_CARD_ALLOW_ZERO_AMOUNT) {
+        return 0;
+    }
+
+    return 10;
+}
+
+/**
  * Fonction principale du shortcode pour les cartes cadeaux
  */
 function newsaiige_gift_cards_shortcode($atts) {
@@ -458,7 +472,7 @@ function newsaiige_gift_cards_shortcode($atts) {
                                     id="amountInput"
                                     class="amount-input" 
                                     placeholder="0" 
-                                    min="10" 
+                                    min="<?php echo esc_attr(newsaiige_gift_card_min_amount()); ?>" 
                                     max="1000" 
                                     step="1" 
                                     required>
@@ -698,6 +712,7 @@ function newsaiige_gift_cards_shortcode($atts) {
         const statusMessage = document.getElementById('statusMessage');
         const loadingSpinner = document.getElementById('loadingSpinner');
         const submitText = document.querySelector('.submit-text');
+        const minAllowedAmount = <?php echo json_encode((float) newsaiige_gift_card_min_amount()); ?>;
 
         // Variable pour le type de livraison
         let deliveryType = 'digital';
@@ -881,8 +896,8 @@ function newsaiige_gift_cards_shortcode($atts) {
         function validateForm() {
             const amount = parseFloat(amountInput.value);
             
-            if (!amount || amount < 10) {
-                showMessage('error', 'Le montant minimum est de 10€');
+            if (Number.isNaN(amount) || amount < minAllowedAmount) {
+                showMessage('error', `Le montant minimum est de ${minAllowedAmount.toFixed(0)}€`);
                 amountInput.focus();
                 return false;
             }
@@ -1037,8 +1052,10 @@ function newsaiige_process_gift_card() {
     $amount = floatval($_POST['amount']);
     $quantity = intval($_POST['quantity']);
     
-    if ($amount < 10 || $amount > 1000) {
-        wp_send_json_error('Montant invalide (entre 10€ et 1000€)');
+    $min_amount = newsaiige_gift_card_min_amount();
+
+    if ($amount < $min_amount || $amount > 1000) {
+        wp_send_json_error('Montant invalide (entre ' . $min_amount . '€ et 1000€)');
         return;
     }
     
@@ -1148,11 +1165,25 @@ function newsaiige_process_gift_card_after_payment($order_id) {
         error_log("newsaiige_process_gift_card_after_payment: Commande #$order_id introuvable");
         return;
     }
-    
-    // Vérifier que la commande est bien payée
-    if (!$order->is_paid()) {
-        error_log("newsaiige_process_gift_card_after_payment: Commande #$order_id PAS ENCORE PAYÉE - Abandon");
+
+    // Protection anti-double traitement sur les hooks multiples WooCommerce.
+    if ($order->get_meta('_newsaiige_gift_cards_processed') === 'yes') {
+        error_log("newsaiige_process_gift_card_after_payment: Commande #$order_id deja traitee, abandon");
         return;
+    }
+    
+    // Verifier que la commande est payable/traitee. Cas special: total 0 peut passer en completed/processing.
+    if (!$order->is_paid()) {
+        $order_status = $order->get_status();
+        $order_total = (float) $order->get_total();
+        $is_free_completed_order = ($order_total <= 0) && in_array($order_status, array('processing', 'completed'), true);
+
+        if (!$is_free_completed_order) {
+            error_log("newsaiige_process_gift_card_after_payment: Commande #$order_id non payable (statut=$order_status, total=$order_total) - abandon");
+            return;
+        }
+
+        error_log("newsaiige_process_gift_card_after_payment: Commande #$order_id total 0 detectee (statut=$order_status), traitement autorise");
     }
     
     error_log("newsaiige_process_gift_card_after_payment: Commande #$order_id trouvée et payée - Statut: " . $order->get_status());
@@ -1160,6 +1191,8 @@ function newsaiige_process_gift_card_after_payment($order_id) {
     $items_count = count($order->get_items());
     error_log("newsaiige_process_gift_card_after_payment: Commande #$order_id contient $items_count item(s)");
     
+    $created_cards_count = 0;
+
     foreach ($order->get_items() as $item) {
         $product = $item->get_product();
         
@@ -1185,6 +1218,7 @@ function newsaiige_process_gift_card_after_payment($order_id) {
                     
                     if ($card_code) {
                         error_log("newsaiige_process_gift_card_after_payment: ✓✓✓ Carte créée avec succès - Code: $card_code");
+                        $created_cards_count++;
                         
                         // Si c'est une livraison physique, notifier l'admin
                         if ($gift_card_data['delivery_type'] === 'physical') {
@@ -1208,6 +1242,14 @@ function newsaiige_process_gift_card_after_payment($order_id) {
             }
         }
     }
+
+    if ($created_cards_count > 0) {
+        $order->update_meta_data('_newsaiige_gift_cards_processed', 'yes');
+        $order->save();
+        error_log("newsaiige_process_gift_card_after_payment: Commande #$order_id marquee comme traitee (cartes creees: $created_cards_count)");
+    } else {
+        error_log("newsaiige_process_gift_card_after_payment: Aucune carte creee pour la commande #$order_id");
+    }
     
     error_log("newsaiige_process_gift_card_after_payment: Fin du traitement pour commande #$order_id");
 }
@@ -1216,6 +1258,8 @@ function newsaiige_process_gift_card_after_payment($order_id) {
 add_action('woocommerce_payment_complete', 'newsaiige_process_gift_card_after_payment', 10, 1);
 // Hook de secours pour les paiements manuels (virement, chèque)
 add_action('woocommerce_order_status_completed', 'newsaiige_process_gift_card_after_payment', 10, 1);
+// Hook de secours important: certaines commandes digitales/0€ passent en processing.
+add_action('woocommerce_order_status_processing', 'newsaiige_process_gift_card_after_payment', 10, 1);
 
 /**
  * Créer un enregistrement de carte cadeau en base
@@ -1265,6 +1309,9 @@ function newsaiige_create_gift_card_record($gift_card_data, $order_id) {
         return $code;
     } else {
         error_log("newsaiige_create_gift_card_record: ✗ ERREUR SQL: " . $wpdb->last_error);
+        if (!empty($wpdb->last_error) && strpos($wpdb->last_error, 'chk_amount') !== false) {
+            error_log('newsaiige_create_gift_card_record: Contrainte SQL chk_amount detectee. Pour les tests a 0€, verifier la structure SQL de la table.');
+        }
         return false;
     }
 }
@@ -1273,15 +1320,24 @@ function newsaiige_create_gift_card_record($gift_card_data, $order_id) {
  * Programmer l'envoi des emails de cartes cadeaux
  */
 function newsaiige_schedule_gift_card_emails($order_id, $gift_card_data) {
-    $delivery_date = $gift_card_data['delivery_date'];
-    $delivery_timestamp = strtotime($delivery_date . ' 09:00:00');
-    
-    // Si la date de livraison est aujourd'hui ou dans le passé, envoyer immédiatement
-    if ($delivery_timestamp <= time()) {
+    $delivery_date = !empty($gift_card_data['delivery_date'])
+        ? $gift_card_data['delivery_date']
+        : current_time('Y-m-d');
+
+    // Si la date de livraison est aujourd'hui ou dans le passe, envoyer immediatement.
+    $today = current_time('Y-m-d');
+    if (strtotime($delivery_date) <= strtotime($today)) {
         newsaiige_send_gift_card_emails($order_id);
     } else {
-        // Programmer l'envoi pour la date spécifiée
-        wp_schedule_single_event($delivery_timestamp, 'newsaiige_send_gift_card_emails_hook', array($order_id));
+        // Programmer l'envoi a 09:00 pour la date specifiee.
+        $delivery_timestamp = strtotime($delivery_date . ' 09:00:00');
+        $scheduled = wp_schedule_single_event($delivery_timestamp, 'newsaiige_send_gift_card_emails_hook', array($order_id));
+
+        // Fallback de securite: si la programmation echoue, tenter l'envoi immediat.
+        if ($scheduled === false) {
+            error_log("newsaiige_schedule_gift_card_emails: Echec de programmation cron pour la commande #$order_id, envoi immediat");
+            newsaiige_send_gift_card_emails($order_id);
+        }
     }
 }
 
@@ -1302,6 +1358,11 @@ function newsaiige_send_gift_card_emails($order_id) {
         "SELECT * FROM $table_name WHERE order_id = %d AND status = 'paid'",
         $order_id
     ));
+
+    if (empty($gift_cards)) {
+        error_log("newsaiige_send_gift_card_emails: Aucune carte cadeau a envoyer pour la commande #$order_id");
+        return;
+    }
     
     foreach ($gift_cards as $gift_card) {
         if (newsaiige_send_gift_card_email($gift_card)) {
@@ -1321,18 +1382,75 @@ function newsaiige_send_gift_card_emails($order_id) {
  * Envoyer un email de carte cadeau individuel
  */
 function newsaiige_send_gift_card_email($gift_card) {
-    $to = $gift_card->recipient_email;
+    $to = sanitize_email($gift_card->recipient_email);
+
+    // Fallback si l'email destinataire est vide/invalide.
+    if (!is_email($to)) {
+        $fallback_to = sanitize_email($gift_card->buyer_email ?? '');
+        if (is_email($fallback_to)) {
+            $to = $fallback_to;
+            error_log('newsaiige_send_gift_card_email: Email destinataire invalide, fallback vers email acheteur pour la carte ' . $gift_card->code);
+        } else {
+            error_log('newsaiige_send_gift_card_email: Aucun email valide pour la carte ' . $gift_card->code);
+            return false;
+        }
+    }
+
     $subject = 'Votre carte cadeau NewSaiige est arrivée ! 🎁';
     
     // Template HTML pour l'email
     $message = newsaiige_get_gift_card_email_template($gift_card);
     
-    $headers = array(
-        'Content-Type: text/html; charset=UTF-8',
-        'From: NewSaiige <noreply@newsaiige.com>'
-    );
-    
-    return wp_mail($to, $subject, $message, $headers);
+    $headers = newsaiige_get_html_mail_headers();
+
+    $attachments = array();
+
+    // Generer une piece jointe plus compatible (ZIP contenant la carte HTML), puis fallback HTML.
+    if (function_exists('newsaiige_generate_gift_card_email_attachment')) {
+        $attachment_path = newsaiige_generate_gift_card_email_attachment($gift_card);
+
+        if (!empty($attachment_path) && file_exists($attachment_path)) {
+            $attachments[] = $attachment_path;
+        } else {
+            error_log('newsaiige_send_gift_card_email: Impossible de générer la pièce jointe pour la carte ' . $gift_card->code);
+        }
+    } elseif (function_exists('newsaiige_generate_gift_card_pdf_simple')) {
+        $attachment_path = newsaiige_generate_gift_card_pdf_simple($gift_card);
+
+        if (!empty($attachment_path) && file_exists($attachment_path)) {
+            $attachments[] = $attachment_path;
+        } else {
+            error_log('newsaiige_send_gift_card_email: Impossible de générer la pièce jointe pour la carte ' . $gift_card->code);
+        }
+    } else {
+        error_log('newsaiige_send_gift_card_email: Générateur de carte cadeau indisponible (newsaiige_generate_gift_card_pdf_simple)');
+    }
+
+    $mail_sent = wp_mail($to, $subject, $message, $headers, $attachments);
+
+    if (!$mail_sent) {
+        error_log('newsaiige_send_gift_card_email: Echec wp_mail pour la carte ' . $gift_card->code . ' vers ' . $to);
+    } else {
+        error_log('newsaiige_send_gift_card_email: Email envoye pour la carte ' . $gift_card->code . ' vers ' . $to);
+    }
+
+    return $mail_sent;
+}
+
+/**
+ * Construire des headers email HTML avec expéditeur WooCommerce si disponible.
+ */
+function newsaiige_get_html_mail_headers() {
+    $headers = array('Content-Type: text/html; charset=UTF-8');
+
+    $from_address = get_option('woocommerce_email_from_address', '');
+    $from_name = get_option('woocommerce_email_from_name', get_bloginfo('name'));
+
+    if (is_email($from_address)) {
+        $headers[] = 'From: ' . sanitize_text_field($from_name) . ' <' . sanitize_email($from_address) . '>';
+    }
+
+    return $headers;
 }
 
 /**
@@ -1368,6 +1486,7 @@ function newsaiige_get_gift_card_email_template($gift_card) {
                 <p>Bonjour <?php echo esc_html($gift_card->recipient_name ?: 'cher(e) client(e)'); ?>,</p>
                 
                 <p>Vous avez reçu une magnifique carte cadeau NewSaiige de la part de <strong><?php echo esc_html($gift_card->buyer_name); ?></strong> !</p>
+                <p>Votre carte cadeau stylisee est jointe a cet email (fichier ZIP contenant la carte HTML). Ouvrez le ZIP puis le fichier HTML pour l'afficher ou l'imprimer.</p>
                 
                 <div class="gift-card">
                     <div class="amount"><?php echo number_format($gift_card->amount, 0, ',', ''); ?>€</div>
@@ -1419,10 +1538,7 @@ function newsaiige_notify_admin_physical_delivery($gift_card_data, $card_code, $
     // Template HTML pour l'email admin
     $message = newsaiige_get_admin_physical_delivery_template($gift_card_data, $card_code, $order_id);
     
-    $headers = array(
-        'Content-Type: text/html; charset=UTF-8',
-        'From: NewSaiige <noreply@newsaiige.com>'
-    );
+    $headers = newsaiige_get_html_mail_headers();
     
     return wp_mail($admin_email, $subject, $message, $headers);
 }
@@ -1540,9 +1656,35 @@ function newsaiige_get_admin_physical_delivery_template($gift_card_data, $card_c
     return ob_get_clean();
 }
 
+/**
+ * En mode test 0€, assouplit la contrainte SQL chk_amount si elle existe.
+ */
+function newsaiige_maybe_relax_amount_constraint_for_test_mode() {
+    if (!(defined('NEWSAIIGE_GIFT_CARD_ALLOW_ZERO_AMOUNT') && NEWSAIIGE_GIFT_CARD_ALLOW_ZERO_AMOUNT)) {
+        return;
+    }
+
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'newsaiige_gift_cards';
+
+    // Tentatives compatibles MySQL/MariaDB selon version.
+    $wpdb->query("ALTER TABLE $table_name DROP CHECK chk_amount");
+    $wpdb->query("ALTER TABLE $table_name DROP CONSTRAINT chk_amount");
+    $wpdb->query("ALTER TABLE $table_name ADD CONSTRAINT chk_amount CHECK (amount >= 0 AND amount <= 1000)");
+
+    if (!empty($wpdb->last_error)) {
+        error_log('newsaiige_maybe_relax_amount_constraint_for_test_mode: ' . $wpdb->last_error);
+    } else {
+        error_log('newsaiige_maybe_relax_amount_constraint_for_test_mode: Contrainte chk_amount ajustee pour autoriser 0€');
+    }
+}
+
 // Initialisation lors du chargement de WordPress
 add_action('init', function() {
     // Créer la table si elle n'existe pas
     newsaiige_create_gift_cards_table();
+
+    // En mode test, autoriser explicitement les montants a 0 en base.
+    newsaiige_maybe_relax_amount_constraint_for_test_mode();
 });
 
