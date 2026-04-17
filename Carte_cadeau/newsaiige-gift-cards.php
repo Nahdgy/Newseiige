@@ -27,6 +27,13 @@ class NewSaiige_Gift_Cards {
      * Instance unique du plugin
      */
     private static $instance = null;
+
+    /**
+     * Eviter le double chargement des composants.
+     *
+     * @var bool
+     */
+    private $components_loaded = false;
     
     /**
      * Obtenir l'instance unique du plugin
@@ -51,9 +58,13 @@ class NewSaiige_Gift_Cards {
     private function init() {
         // Vérifier les prérequis
         add_action('admin_init', array($this, 'check_requirements'));
-        
-        // Charger les composants
-        add_action('plugins_loaded', array($this, 'load_components'));
+
+        // Charger les composants meme si le plugin est inclus tardivement (ex: via functions.php du theme).
+        if (did_action('plugins_loaded')) {
+            $this->load_components();
+        } else {
+            add_action('plugins_loaded', array($this, 'load_components'));
+        }
         
         // Hooks d'activation/désactivation
         register_activation_hook(__FILE__, array($this, 'activate'));
@@ -112,9 +123,16 @@ class NewSaiige_Gift_Cards {
      * Charger les composants du plugin
      */
     public function load_components() {
+        if ($this->components_loaded) {
+            return;
+        }
+
         if (!$this->check_requirements()) {
             return;
         }
+
+        // Charger l'autoloader Composer si present (ex: Dompdf).
+        $this->load_vendor_autoloader();
         
         // Charger les fichiers principaux
         $this->load_file('gift-cards.php');
@@ -135,6 +153,7 @@ class NewSaiige_Gift_Cards {
         
         // Initialiser les composants
         $this->init_components();
+        $this->components_loaded = true;
     }
     
     /**
@@ -146,6 +165,17 @@ class NewSaiige_Gift_Cards {
             require_once $file_path;
         } else {
             error_log("NewSaiige Gift Cards: Fichier manquant - $filename");
+        }
+    }
+
+    /**
+     * Charger vendor/autoload.php si disponible.
+     */
+    private function load_vendor_autoloader() {
+        $autoload_path = plugin_dir_path(__FILE__) . 'vendor/autoload.php';
+
+        if (file_exists($autoload_path)) {
+            require_once $autoload_path;
         }
     }
     

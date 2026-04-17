@@ -9,6 +9,14 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// Securiser le chargement du generateur HTML meme si ce fichier est inclus directement.
+if (!function_exists('newsaiige_get_gift_card_html_url')) {
+    $gift_card_html_generator = __DIR__ . '/gift-card-pdf-simple.php';
+    if (file_exists($gift_card_html_generator)) {
+        require_once $gift_card_html_generator;
+    }
+}
+
 /**
  * Montant minimum autorise pour une carte cadeau.
  *
@@ -1397,36 +1405,16 @@ function newsaiige_send_gift_card_email($gift_card) {
     }
 
     $subject = 'Votre carte cadeau NewSaiige est arrivée ! 🎁';
-    
-    // Template HTML pour l'email
-    $message = newsaiige_get_gift_card_email_template($gift_card);
-    
+
     $headers = newsaiige_get_html_mail_headers();
 
-    $attachments = array();
+    // Generer l'URL publique de la carte cadeau HTML (avec fallback robuste).
+    $card_url = newsaiige_resolve_gift_card_html_url($gift_card);
 
-    // Generer une piece jointe plus compatible (ZIP contenant la carte HTML), puis fallback HTML.
-    if (function_exists('newsaiige_generate_gift_card_email_attachment')) {
-        $attachment_path = newsaiige_generate_gift_card_email_attachment($gift_card);
+    // Template HTML pour l'email avec le lien vers la carte cadeau.
+    $message = newsaiige_get_gift_card_email_template($gift_card, $card_url);
 
-        if (!empty($attachment_path) && file_exists($attachment_path)) {
-            $attachments[] = $attachment_path;
-        } else {
-            error_log('newsaiige_send_gift_card_email: Impossible de générer la pièce jointe pour la carte ' . $gift_card->code);
-        }
-    } elseif (function_exists('newsaiige_generate_gift_card_pdf_simple')) {
-        $attachment_path = newsaiige_generate_gift_card_pdf_simple($gift_card);
-
-        if (!empty($attachment_path) && file_exists($attachment_path)) {
-            $attachments[] = $attachment_path;
-        } else {
-            error_log('newsaiige_send_gift_card_email: Impossible de générer la pièce jointe pour la carte ' . $gift_card->code);
-        }
-    } else {
-        error_log('newsaiige_send_gift_card_email: Générateur de carte cadeau indisponible (newsaiige_generate_gift_card_pdf_simple)');
-    }
-
-    $mail_sent = wp_mail($to, $subject, $message, $headers, $attachments);
+    $mail_sent = wp_mail($to, $subject, $message, $headers);
 
     if (!$mail_sent) {
         error_log('newsaiige_send_gift_card_email: Echec wp_mail pour la carte ' . $gift_card->code . ' vers ' . $to);
@@ -1435,6 +1423,46 @@ function newsaiige_send_gift_card_email($gift_card) {
     }
 
     return $mail_sent;
+}
+
+/**
+ * Resolver robuste pour l'URL HTML de la carte cadeau.
+ *
+ * @param object $gift_card
+ * @return string URL publique ou chaine vide
+ */
+function newsaiige_resolve_gift_card_html_url($gift_card) {
+    if (function_exists('newsaiige_get_gift_card_html_url')) {
+        $url = newsaiige_get_gift_card_html_url($gift_card);
+        if (!empty($url)) {
+            return $url;
+        }
+    }
+
+    // Fallback: generer le fichier HTML puis convertir chemin -> URL uploads.
+    if (function_exists('newsaiige_generate_gift_card_pdf_simple')) {
+        $html_path = newsaiige_generate_gift_card_pdf_simple($gift_card);
+
+        if (!empty($html_path) && file_exists($html_path)) {
+            $uploads = wp_upload_dir();
+            $basedir = isset($uploads['basedir']) ? wp_normalize_path($uploads['basedir']) : '';
+            $baseurl = isset($uploads['baseurl']) ? rtrim($uploads['baseurl'], '/') : '';
+            $normalized_html_path = wp_normalize_path($html_path);
+
+            if (!empty($basedir) && !empty($baseurl) && strpos($normalized_html_path, $basedir) === 0) {
+                $relative = ltrim(substr($normalized_html_path, strlen($basedir)), '/');
+                $fallback_url = $baseurl . '/' . str_replace(' ', '%20', $relative);
+                error_log('newsaiige_resolve_gift_card_html_url: URL fallback generee - ' . $fallback_url);
+                return $fallback_url;
+            }
+
+            error_log('newsaiige_resolve_gift_card_html_url: Impossible de convertir le chemin HTML en URL pour la carte ' . $gift_card->code);
+            return '';
+        }
+    }
+
+    error_log('newsaiige_resolve_gift_card_html_url: Aucune methode disponible pour la carte ' . ($gift_card->code ?? 'inconnue'));
+    return '';
 }
 
 /**
@@ -1456,7 +1484,7 @@ function newsaiige_get_html_mail_headers() {
 /**
  * Template HTML pour l'email de carte cadeau
  */
-function newsaiige_get_gift_card_email_template($gift_card) {
+function newsaiige_get_gift_card_email_template($gift_card, $card_url = '') {
     ob_start();
     ?>
     <!DOCTYPE html>
@@ -1486,7 +1514,16 @@ function newsaiige_get_gift_card_email_template($gift_card) {
                 <p>Bonjour <?php echo esc_html($gift_card->recipient_name ?: 'cher(e) client(e)'); ?>,</p>
                 
                 <p>Vous avez reçu une magnifique carte cadeau NewSaiige de la part de <strong><?php echo esc_html($gift_card->buyer_name); ?></strong> !</p>
-                <p>Votre carte cadeau stylisee est jointe a cet email (fichier ZIP contenant la carte HTML). Ouvrez le ZIP puis le fichier HTML pour l'afficher ou l'imprimer.</p>
+                
+                <?php if (!empty($card_url)): ?>
+                <div style="text-align: center; margin: 35px 0;">
+                    <a href="<?php echo esc_url($card_url); ?>"
+                       style="display: inline-block; background: linear-gradient(45deg, #82897F, #9EA49D); color: white; text-decoration: none; padding: 18px 45px; border-radius: 50px; font-weight: 700; font-size: 16px; letter-spacing: 1px;">
+                        🎁 Voir ma carte cadeau
+                    </a>
+                    <p style="margin-top: 14px; color: #888; font-size: 13px;">Cliquez pour ouvrir votre carte &mdash; depuis le navigateur, faites <strong>Ctrl+P</strong> (ou <strong>Cmd+P</strong> sur Mac) pour l'enregistrer en PDF.</p>
+                </div>
+                <?php endif; ?>
                 
                 <div class="gift-card">
                     <div class="amount"><?php echo number_format($gift_card->amount, 0, ',', ''); ?>€</div>

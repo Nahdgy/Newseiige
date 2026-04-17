@@ -68,7 +68,7 @@ echo "   Pour: {$test_gift_card->recipient_name}\n";
 echo "   De: {$test_gift_card->buyer_name}\n";
 echo "   Montant: {$test_gift_card->amount}€\n\n";
 
-echo "🔄 Génération de la carte cadeau HTML...\n";
+echo "🔄 Génération de la carte cadeau (PDF prioritaire)...\n";
 
 // Générer la carte
 $result = newsaiige_generate_gift_card_pdf_simple($test_gift_card);
@@ -81,18 +81,21 @@ if ($result && file_exists($result)) {
     echo "╚═══════════════════════════════════════════════════════╝\n\n";
     echo "📄 Fichier: $result\n";
     echo "📊 Taille: {$filesize} KB\n";
-    echo "🔗 Type: HTML (prêt à imprimer en PDF)\n\n";
+    $extension = strtolower(pathinfo($result, PATHINFO_EXTENSION));
+    echo "🔗 Type: " . strtoupper($extension) . "\n\n";
     
     echo "╔═══════════════════════════════════════════════════════╗\n";
     echo "║   COMMENT UTILISER                                  ║\n";
     echo "╚═══════════════════════════════════════════════════════╝\n\n";
-    echo "1️⃣  Ouvrez le fichier HTML dans votre navigateur\n";
-    echo "2️⃣  Appuyez sur Ctrl+P (ou Cmd+P sur Mac)\n";
-    echo "3️⃣  Sélectionnez 'Enregistrer en PDF'\n";
-    echo "4️⃣  Votre carte cadeau est prête!\n\n";
-    
-    echo "💡 Le fichier HTML peut être envoyé par email,\n";
-    echo "   vos clients pourront l'ouvrir et l'imprimer facilement.\n\n";
+    if ($extension === 'pdf') {
+        echo "1️⃣  Ouvrez le PDF pour verifier le rendu\n";
+        echo "2️⃣  Le fichier est pret a etre joint a l'email\n\n";
+    } else {
+        echo "1️⃣  Ouvrez le fichier HTML dans votre navigateur\n";
+        echo "2️⃣  Appuyez sur Ctrl+P (ou Cmd+P sur Mac)\n";
+        echo "3️⃣  Sélectionnez 'Enregistrer en PDF'\n";
+        echo "4️⃣  Votre carte cadeau est prête!\n\n";
+    }
     
     echo "🎉 Test réussi!\n\n";
     exit(0);

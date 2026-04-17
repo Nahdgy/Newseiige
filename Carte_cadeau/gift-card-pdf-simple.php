@@ -1,8 +1,7 @@
 <?php
 /**
  * NewSaiige Gift Card HTML Generator
- * Génère des cartes cadeaux HTML élégantes et imprimables
- * Les destinataires peuvent ouvrir le HTML et l'imprimer en PDF depuis leur navigateur
+ * Génère des cartes cadeaux HTML accessibles via un lien dans l'email.
  */
 
 // Empêcher l'accès direct (sauf pour les tests)
@@ -11,75 +10,69 @@ if (!defined('ABSPATH') && !defined('NEWSAIIGE_TESTING')) {
 }
 
 /**
- * Générer une carte cadeau HTML personnalisée
- * Le destinataire peut ouvrir le HTML dans un navigateur et l'imprimer en PDF
- * 
+ * Obtenir le dossier de sortie des cartes cadeaux dans uploads.
+ *
+ * @return string|false
+ */
+function newsaiige_get_gift_cards_output_dir() {
+    $upload_dir = wp_upload_dir();
+
+    if (empty($upload_dir['basedir'])) {
+        error_log('newsaiige_get_gift_cards_output_dir: basedir uploads introuvable');
+        return false;
+    }
+
+    $gift_cards_dir = rtrim($upload_dir['basedir'], '/\\') . '/gift-cards/';
+
+    if (!file_exists($gift_cards_dir) && !wp_mkdir_p($gift_cards_dir)) {
+        error_log('newsaiige_get_gift_cards_output_dir: Impossible de creer le dossier ' . $gift_cards_dir);
+        return false;
+    }
+
+    if (!is_writable($gift_cards_dir)) {
+        error_log('newsaiige_get_gift_cards_output_dir: Dossier non accessible en ecriture ' . $gift_cards_dir);
+        return false;
+    }
+
+    return $gift_cards_dir;
+}
+
+/**
+ * Générer une carte cadeau HTML (point d'entrée principal).
+ *
  * @param object $gift_card Données de la carte cadeau
  * @return string|false Chemin du fichier HTML généré
  */
 function newsaiige_generate_gift_card_pdf_simple($gift_card) {
-    try {
-        // Générer le HTML de la carte cadeau
-        return newsaiige_generate_pdf_as_html($gift_card);
-        
-    } catch (Exception $e) {
-        error_log("newsaiige_generate_gift_card_pdf_simple: ERREUR - " . $e->getMessage());
-        return false;
-    }
+    return newsaiige_generate_pdf_as_html($gift_card);
 }
 
 /**
- * Generer la piece jointe la plus compatible pour l'email.
- * Priorite: ZIP contenant le HTML (moins susceptible d'etre bloque) puis fallback HTML.
+ * Générer la carte cadeau HTML et retourner son URL publique.
+ * Cette URL est incluse dans l'email pour que le destinataire puisse l'ouvrir et l'imprimer.
  *
- * @param object $gift_card Donnees de la carte cadeau
- * @return string|false Chemin du fichier a joindre
+ * @param object $gift_card Données de la carte cadeau
+ * @return string|false URL publique du fichier HTML, ou false en cas d'erreur
  */
-function newsaiige_generate_gift_card_email_attachment($gift_card) {
-    $html_path = newsaiige_generate_gift_card_pdf_simple($gift_card);
+function newsaiige_get_gift_card_html_url($gift_card) {
+    $filepath = newsaiige_generate_pdf_as_html($gift_card);
 
-    if (empty($html_path) || !file_exists($html_path)) {
-        error_log('newsaiige_generate_gift_card_email_attachment: HTML introuvable pour la carte ' . ($gift_card->code ?? 'inconnue'));
+    if (empty($filepath) || !file_exists($filepath)) {
+        error_log('newsaiige_get_gift_card_html_url: Fichier HTML introuvable pour la carte ' . ($gift_card->code ?? 'inconnue'));
         return false;
     }
 
-    $zip_path = dirname($html_path) . '/gift-card-' . $gift_card->code . '.zip';
-
-    // Methode 1: extension ZipArchive si disponible
-    if (class_exists('ZipArchive')) {
-        $zip = new ZipArchive();
-        if ($zip->open($zip_path, ZipArchive::CREATE | ZipArchive::OVERWRITE) === true) {
-            $zip->addFile($html_path, basename($html_path));
-            $zip->close();
-
-            if (file_exists($zip_path) && filesize($zip_path) > 0) {
-                error_log('newsaiige_generate_gift_card_email_attachment: ZIP genere via ZipArchive - ' . $zip_path);
-                return $zip_path;
-            }
-        }
+    $upload_dir = wp_upload_dir();
+    if (empty($upload_dir['baseurl'])) {
+        error_log('newsaiige_get_gift_card_html_url: baseurl uploads introuvable');
+        return false;
     }
 
-    // Methode 2: fallback PclZip (lib incluse WordPress)
-    if (defined('ABSPATH')) {
-        $pclzip_file = ABSPATH . 'wp-admin/includes/class-pclzip.php';
-        if (file_exists($pclzip_file)) {
-            require_once $pclzip_file;
+    $filename = 'gift-card-' . $gift_card->code . '.html';
+    $url = rtrim($upload_dir['baseurl'], '/') . '/gift-cards/' . $filename;
 
-            if (class_exists('PclZip')) {
-                $archive = new PclZip($zip_path);
-                $result = $archive->create($html_path, PCLZIP_OPT_REMOVE_PATH, dirname($html_path));
-
-                if ($result !== 0 && file_exists($zip_path) && filesize($zip_path) > 0) {
-                    error_log('newsaiige_generate_gift_card_email_attachment: ZIP genere via PclZip - ' . $zip_path);
-                    return $zip_path;
-                }
-            }
-        }
-    }
-
-    // Fallback final: retourner le HTML brut
-    error_log('newsaiige_generate_gift_card_email_attachment: ZIP indisponible, fallback HTML - ' . $html_path);
-    return $html_path;
+    error_log('newsaiige_get_gift_card_html_url: URL generee - ' . $url);
+    return $url;
 }
 
 
@@ -91,28 +84,47 @@ function newsaiige_generate_gift_card_email_attachment($gift_card) {
 function newsaiige_generate_pdf_as_html($gift_card) {
     try {
         $html = newsaiige_get_gift_card_html($gift_card);
-        
-        // Définir le répertoire de sortie
-        $upload_dir = wp_upload_dir();
-        $gift_cards_dir = $upload_dir['basedir'] . '/gift-cards/';
-        
-        if (!file_exists($gift_cards_dir)) {
-            wp_mkdir_p($gift_cards_dir);
+
+        $gift_cards_dir = newsaiige_get_gift_cards_output_dir();
+        if ($gift_cards_dir === false) {
+            return false;
         }
-        
+
         $filename = 'gift-card-' . $gift_card->code . '.html';
         $filepath = $gift_cards_dir . $filename;
-        
-        file_put_contents($filepath, $html);
+
+        $written = file_put_contents($filepath, $html);
+        if ($written === false || $written <= 0 || !file_exists($filepath)) {
+            error_log("newsaiige_generate_gift_card_html: Echec ecriture HTML - $filepath");
+            return false;
+        }
         
         error_log("newsaiige_generate_gift_card_html: Carte cadeau HTML générée - $filepath");
         
         return $filepath;
         
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         error_log("newsaiige_generate_gift_card_html: ERREUR - " . $e->getMessage());
         return false;
     }
+}
+
+/**
+ * Recuperer l'image de fond en data URI pour une meilleure compatibilite PDF.
+ *
+ * @return string
+ */
+function newsaiige_get_gift_card_background_data_uri() {
+    $background_file = plugin_dir_path(__FILE__) . 'assets/gift-card-background.png';
+
+    if (file_exists($background_file) && is_readable($background_file)) {
+        $image_data = file_get_contents($background_file);
+        if ($image_data !== false) {
+            return 'data:image/png;base64,' . base64_encode($image_data);
+        }
+    }
+
+    return plugins_url('assets/gift-card-background.png', __FILE__);
 }
 
 /**
@@ -126,9 +138,8 @@ function newsaiige_get_gift_card_html($gift_card) {
     $code = esc_html($gift_card->code);
     $expiry_date = date('d/m/Y', strtotime($gift_card->expires_at));
     
-    // Chemin de l'image de fond
-    $plugin_url = plugins_url('', __FILE__);
-    $background_image = $plugin_url . '/assets/gift-card-background.png';
+    // Image de fond via data URI (compatible navigateurs et evite les problemes CORS).
+    $background_image = newsaiige_get_gift_card_background_data_uri();
     
     ob_start();
     ?>
