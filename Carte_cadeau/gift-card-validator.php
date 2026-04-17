@@ -425,8 +425,9 @@ function newsaiige_gift_card_validator_shortcode($atts) {
                 
                 <div class="contact-info">
                     <strong>📍 NewSaiige</strong><br>
-                    [Votre adresse complète]<br>
-                    📞 <a href="tel:+33123456789">01 23 45 67 89</a><br>
+                    Résidence Le Villanova, 175 avenue Frédéric Mistral<br>
+                    83130 La Garde<br>
+                    📞 <a href="tel:+33664779733">06 64 77 97 33</a><br>
                     ✉️ <a href="mailto:contact@newsaiige.com">contact@newsaiige.com</a><br>
                     🌐 <a href="https://newsaiige.com" target="_blank">www.newsaiige.com</a>
                 </div>

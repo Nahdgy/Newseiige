@@ -1,4 +1,4 @@
-<?php
+
 /**
  * NewSaiige Gift Cards System
  * Système de cartes cadeaux avec paiement et envoi par email
@@ -8,9 +8,6 @@
 if (!defined('ABSPATH')) {
     exit;
 }
-
-// Charger le générateur HTML de cartes cadeaux
-require_once(plugin_dir_path(__FILE__) . 'gift-card-pdf-simple.php');
 
 /**
  * Fonction principale du shortcode pour les cartes cadeaux
@@ -1335,27 +1332,7 @@ function newsaiige_send_gift_card_email($gift_card) {
         'From: NewSaiige <noreply@newsaiige.com>'
     );
     
-    // Générer le HTML de la carte cadeau
-    $html_path = newsaiige_generate_gift_card_pdf_simple($gift_card);
-    
-    $attachments = array();
-    if ($html_path && file_exists($html_path)) {
-        $attachments[] = $html_path;
-        error_log("newsaiige_send_gift_card_email: Carte HTML attachée - $html_path");
-    } else {
-        error_log("newsaiige_send_gift_card_email: Erreur génération carte HTML");
-    }
-    
-    // Envoyer l'email avec la pièce jointe HTML
-    $result = wp_mail($to, $subject, $message, $headers, $attachments);
-    
-    // Les fichiers HTML sont conservés pour permettre le renvoi si nécessaire
-    // Pour supprimer automatiquement après envoi, décommentez:
-    // if ($html_path && file_exists($html_path)) {
-    //     unlink($html_path);
-    // }
-    
-    return $result;
+    return wp_mail($to, $subject, $message, $headers);
 }
 
 /**
@@ -1409,14 +1386,14 @@ function newsaiige_get_gift_card_email_template($gift_card) {
                 <h3>Comment utiliser votre carte cadeau :</h3>
                 <ol>
                     <li>Présentez ce code lors de votre rendez-vous chez NewSaiige</li>
-                    <li>Ou contactez-nous pour réserver : <a href="tel:+33123456789">01 23 45 67 89</a></li>
+                    <li>Ou contactez-nous pour réserver : <a href="tel:+33664779733">06 64 77 97 33</a></li>
                     <li>Le montant sera déduit automatiquement de votre facture</li>
                 </ol>
                 
                 <p><strong>Adresse :</strong><br>
                 NewSaiige<br>
-                [Votre adresse]<br>
-                [Code postal] [Ville]</p>
+                Résidence Le Villanova, 175 avenue Frédéric Mistral<br>
+                83130 La Garde</p>
                 
                 <p>Nous avons hâte de vous accueillir pour un moment d'exception !</p>
             </div>
@@ -1569,4 +1546,3 @@ add_action('init', function() {
     newsaiige_create_gift_cards_table();
 });
 
-?>
