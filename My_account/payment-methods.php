@@ -164,16 +164,18 @@ function newsaiige_payment_methods_shortcode($atts) {
     .card-action-btn {
         background: rgba(255, 255, 255, 0.2);
         border: none;
-        border-radius: 50%;
-        width: 30px;
-        height: 30px;
+        border-radius: 20px;
+        padding: 5px 12px;
+        height: auto;
         color: white;
         cursor: pointer;
         transition: all 0.2s ease;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 0.8rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        white-space: nowrap;
     }
 
     .card-action-btn:hover {
@@ -300,9 +302,10 @@ function newsaiige_payment_methods_shortcode($atts) {
                         <div class="payment-card">
                             <div class="card-actions">
                                 <?php if (!$is_default) : ?>
-                                    <button class="card-action-btn" type="button" title="Définir par défaut" onclick="setDefaultPaymentMethod(<?php echo esc_attr($token_id); ?>)">⭐</button>
+                                    <button class="card-action-btn" type="button" title="Définir par défaut" onclick="setDefaultPaymentMethod(<?php echo esc_attr($token_id); ?>)">Favoris</button>
+                                    
                                 <?php endif; ?>
-                                <button class="card-action-btn" type="button" title="Supprimer" onclick="deletePaymentMethod(<?php echo esc_attr($token_id); ?>)">🗑️</button>
+                                <button class="card-action-btn" type="button" title="Supprimer" onclick="deletePaymentMethod(<?php echo esc_attr($token_id); ?>)">Supprimer</button>
                             </div>
 
                             <div class="card-header">
